@@ -1,7 +1,7 @@
 {
   "name": "corkboard",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +11,7 @@
     "typecheck": "vue-tsc -b"
   },
   "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@fontsource/caveat": "^5.3.0",
     "@fontsource/patrick-hand": "^5.3.0",
     "html-to-image": "^1.11.13",
@@ -30,6 +31,6 @@
     "vitest": "^5.1.0",
     "vue-tsc": "^3.3.14"
   },
-  "description": "A cork board in your browser: pin sticky notes, index cards, lined paper and photos (Vue 3)",
+  "description": "An endless wall of cork boards in your browser: sticky notes, index cards, photos, stickers and washi tape (Vue 3)",
   "license": "MIT"
 }

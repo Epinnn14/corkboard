@@ -1,21 +1,22 @@
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 import App from './App.vue';
-import { loadBoard, saveBoard } from './core/storage';
-import { useBoard, welcomeBoard } from './stores/board';
+import { loadWorkspace, saveWorkspace } from './core/storage';
+import { autoOrientation } from './core/workspace';
+import { useWorkspace, welcomeWorkspace } from './stores/workspace';
 import './style.css';
 
 const app = createApp(App).use(createPinia());
-const store = useBoard();
+const store = useWorkspace();
 
-loadBoard().then((saved) => {
-  store.replace(saved ?? welcomeBoard());
+loadWorkspace().then((saved) => {
+  store.replace(saved ?? welcomeWorkspace(autoOrientation({ w: window.innerWidth, h: window.innerHeight })));
   // autosave, debounced
   let timer: ReturnType<typeof setTimeout> | undefined;
   store.$subscribe(() => {
     clearTimeout(timer);
-    timer = setTimeout(() => void saveBoard(store.board), 300);
+    timer = setTimeout(() => void saveWorkspace(store.ws), 400);
   });
-  window.addEventListener('pagehide', () => void saveBoard(store.board));
+  window.addEventListener('pagehide', () => void saveWorkspace(store.ws));
   app.mount('#app');
 });
