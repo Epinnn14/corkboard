@@ -8,7 +8,6 @@ import {
   findSpot,
   type Note,
   parseBoard,
-  reorient,
   STICKY_COLORS,
 } from '../src/core/board';
 
@@ -30,6 +29,8 @@ describe('createNote', () => {
     expect(createNote('polaroid', board).pin).toBe('blue');
     expect(createNote('card', board).pin).toBe('green');
     expect(createNote('index', board).color).toBe('#ffffff');
+    const sticker = createNote('sticker', board, { text: '🔥' });
+    expect(sticker).toMatchObject({ w: 120, h: 120, text: '🔥' });
   });
 
   it('centres on a requested point and stays on the board', () => {
@@ -76,18 +77,6 @@ describe('z-order', () => {
   });
 });
 
-describe('orientation', () => {
-  it('rescales positions and keeps every note on the board', () => {
-    let board = emptyBoard('landscape');
-    board = { ...board, notes: [createNote('index', board, { at: { x: 1550, y: 950 } })] };
-    const portrait = reorient(board, 'portrait');
-    const n = portrait.notes[0];
-    expect(portrait.orientation).toBe('portrait');
-    expect(n.x + n.w).toBeLessThanOrEqual(BOARD_SIZE.portrait.w);
-    expect(n.y + n.h).toBeLessThanOrEqual(BOARD_SIZE.portrait.h);
-  });
-});
-
 describe('parseBoard', () => {
   const valid = () => {
     const board = emptyBoard('portrait');
@@ -102,16 +91,20 @@ describe('parseBoard', () => {
 
   it('sanitises sloppy values', () => {
     const b = valid();
-    Object.assign(b.notes[0], { x: -999, rotation: 90, color: 'red; background:url(x)', pin: 'gold', w: 5 });
+    Object.assign(b.notes[0], { x: -999, rotation: 90, color: 'red; background:url(x)', pin: 'gold', w: 5, tape: 'glitter' });
     const r = parseBoard(b);
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.board.notes[0]).toMatchObject({ x: 12, rotation: 15, color: '#fff27a', pin: 'red', w: 80 });
+    if (r.ok) {
+      expect(r.board.notes[0]).toMatchObject({ x: 12, rotation: 15, color: '#fff27a', pin: 'red', w: 60 });
+      expect(r.board.notes[0].tape).toBeUndefined();
+    }
   });
 
   it('rejects junk with a reason', () => {
     expect(parseBoard(null)).toEqual({ ok: false, error: 'Not a board file' });
     expect(parseBoard({ version: 2, notes: [] }).ok).toBe(false);
     expect(parseBoard({ version: 1 })).toEqual({ ok: false, error: 'Board has no notes list' });
+    expect(parseBoard({ notes: [{ ...valid().notes[0], tape: 'glitter' }] }).ok && 'ok').toBe('ok');
     expect(parseBoard({ version: 1, notes: [{ kind: 'banner' }] })).toEqual({ ok: false, error: 'Note 1: unknown kind' });
     const b = valid();
     (b.notes[0] as Note).image = 'javascript:alert(1)';

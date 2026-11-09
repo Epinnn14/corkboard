@@ -1,11 +1,28 @@
 /**
- * Board model — plain data and pure functions, no Vue. Positions are in board
- * units (a fixed logical canvas) so a board looks identical on every screen.
+ * Board and note model — plain data and pure functions, no Vue. Note positions
+ * are in board units (a fixed logical canvas) so a board looks the same on every
+ * screen; where the board sits in the workspace is `Board.x / Board.y`.
  */
 
-export type NoteKind = 'sticky' | 'index' | 'lined' | 'polaroid' | 'card';
+export type NoteKind = 'sticky' | 'index' | 'lined' | 'polaroid' | 'card' | 'sticker';
 export type PinColor = 'red' | 'green' | 'blue' | 'yellow' | 'white';
 export type Orientation = 'landscape' | 'portrait';
+export type Surface = 'cork' | 'felt' | 'blush' | 'paper';
+export type Tape = 'pink-stripes' | 'mint-dots' | 'sun-grid' | 'kraft' | 'lilac-check';
+
+export const SURFACES: Record<Surface, string> = {
+  cork: 'Cork',
+  felt: 'Midnight felt',
+  blush: 'Blush linen',
+  paper: 'Dot grid',
+};
+export const TAPES: readonly Tape[] = ['pink-stripes', 'mint-dots', 'sun-grid', 'kraft', 'lilac-check'];
+
+/** a sticker sheet: reactions, study and work staples */
+export const STICKERS = [
+  '✨', '🔥', '💯', '✅', '⭐', '❤️', '🫶', '🎉', '💡', '📌', '📚', '☕',
+  '🎧', '🧠', '🚀', '😭', '👀', '🌈', '🍀', '📅', '⏰', '💸', '🏆', '🎯',
+] as const;
 
 export interface Note {
   id: string;
@@ -21,15 +38,21 @@ export interface Note {
   text: string;
   /** data URL for polaroids */
   image?: string;
+  /** washi tape instead of a push-pin */
+  tape?: Tape;
   z: number;
   createdAt: number;
   updatedAt: number;
 }
 
 export interface Board {
-  version: 1;
+  id: string;
   title: string;
   orientation: Orientation;
+  surface: Surface;
+  /** top-left corner of the frame in workspace units */
+  x: number;
+  y: number;
   notes: Note[];
 }
 
@@ -38,8 +61,22 @@ export const BOARD_SIZE: Record<Orientation, { w: number; h: number }> = {
   portrait: { w: 1000, h: 1500 },
 };
 
-export const STICKY_COLORS = ['#fff27a', '#ffb3c7', '#a8dcff', '#b9f2a1', '#ffcb80', '#d7c2ff'] as const;
-export const CARD_COLORS = ['#f4f4f2', '#e9e6dc', '#dfe9f0'] as const;
+/** classic sticky-note pads, in pad-shelf order */
+export const STICKY_COLORS = [
+  '#fff27a', // canary
+  '#ffe0a3', // vanilla
+  '#ffcb80', // apricot
+  '#ff9f80', // coral
+  '#ffb3c7', // pink
+  '#f6a6e0', // orchid
+  '#d7c2ff', // lavender
+  '#b4c8ff', // periwinkle
+  '#a8dcff', // sky
+  '#9eeadf', // aqua
+  '#b9f2a1', // lime
+  '#e6f59a', // pistachio
+] as const;
+export const CARD_COLORS = ['#f4f4f2', '#e9e6dc', '#dfe9f0', '#f3e3d3', '#e3efe1', '#ece3f1'] as const;
 export const PIN_COLORS: readonly PinColor[] = ['red', 'green', 'blue', 'yellow', 'white'];
 
 export const KIND_LABEL: Record<NoteKind, string> = {
@@ -48,6 +85,7 @@ export const KIND_LABEL: Record<NoteKind, string> = {
   lined: 'Lined paper',
   polaroid: 'Photo',
   card: 'Card',
+  sticker: 'Sticker',
 };
 
 const SIZES: Record<NoteKind, { w: number; h: number }> = {
@@ -56,6 +94,7 @@ const SIZES: Record<NoteKind, { w: number; h: number }> = {
   lined: { w: 240, h: 320 },
   polaroid: { w: 230, h: 270 },
   card: { w: 300, h: 210 },
+  sticker: { w: 120, h: 120 },
 };
 
 export type Random = () => number;
@@ -68,8 +107,12 @@ export function newId(rnd: Random = Math.random): string {
   return `${Date.now().toString(36)}-${Math.floor(rnd() * 1e9).toString(36)}`;
 }
 
-export function emptyBoard(orientation: Orientation = 'landscape'): Board {
-  return { version: 1, title: 'My board', orientation, notes: [] };
+export function emptyBoard(
+  orientation: Orientation = 'landscape',
+  at: { x: number; y: number } = { x: 0, y: 0 },
+  title = 'My board',
+): Board {
+  return { id: newId(), title, orientation, surface: 'cork', x: at.x, y: at.y, notes: [] };
 }
 
 export function topZ(notes: readonly Note[]): number {
@@ -121,7 +164,14 @@ export function findSpot(
 export function createNote(
   kind: NoteKind,
   board: Board,
-  opts: { at?: { x: number; y: number }; color?: string; rnd?: Random; now?: number } = {},
+  opts: {
+    at?: { x: number; y: number };
+    color?: string;
+    text?: string;
+    tape?: Tape;
+    rnd?: Random;
+    now?: number;
+  } = {},
 ): Note {
   const rnd = opts.rnd ?? Math.random;
   const now = opts.now ?? Date.now();
@@ -137,10 +187,11 @@ export function createNote(
     kind,
     ...pos,
     ...size,
-    rotation: Math.round((rnd() * 8 - 4) * 10) / 10,
+    rotation: Math.round((rnd() * (kind === 'sticker' ? 24 : 8) - (kind === 'sticker' ? 12 : 4)) * 10) / 10,
     color,
     pin: kind === 'polaroid' ? 'blue' : kind === 'card' ? 'green' : pick(PIN_COLORS.slice(0, 4), rnd),
-    text: '',
+    text: opts.text ?? '',
+    ...(opts.tape ? { tape: opts.tape } : {}),
     z: topZ(board.notes) + 1,
     createdAt: now,
     updatedAt: now,
@@ -157,38 +208,20 @@ export function bringToFront(notes: Note[], id: string): Note[] {
   return notes.map((n) => ({ ...n, z: zOf.get(n.id) ?? n.z }));
 }
 
-/** Re-fit notes when switching orientation so nothing ends up off the board. */
-export function reorient(board: Board, orientation: Orientation): Board {
-  const from = BOARD_SIZE[board.orientation];
-  const to = BOARD_SIZE[orientation];
-  return {
-    ...board,
-    orientation,
-    notes: board.notes.map((n) => ({
-      ...n,
-      ...clampToBoard({ ...n, x: (n.x / from.w) * to.w, y: (n.y / from.h) * to.h }, orientation),
-    })),
-  };
-}
-
 // ------------------------------------------------------------- import/export
 
-const KINDS: readonly NoteKind[] = ['sticky', 'index', 'lined', 'polaroid', 'card'];
+const KINDS: readonly NoteKind[] = ['sticky', 'index', 'lined', 'polaroid', 'card', 'sticker'];
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isStr = (v: unknown): v is string => typeof v === 'string';
 
-export type ParseResult = { ok: true; board: Board } | { ok: false; error: string };
+const HEX = /^#[0-9a-f]{6}$/i;
 
-/** Validate untrusted JSON (an imported file or old storage). Unknown fields are dropped. */
-export function parseBoard(input: unknown): ParseResult {
-  if (!input || typeof input !== 'object') return { ok: false, error: 'Not a board file' };
-  const b = input as Record<string, unknown>;
-  if (b.version !== 1) return { ok: false, error: 'Unsupported board version' };
-  const orientation: Orientation = b.orientation === 'portrait' ? 'portrait' : 'landscape';
-  if (!Array.isArray(b.notes)) return { ok: false, error: 'Board has no notes list' };
-  if (b.notes.length > 500) return { ok: false, error: 'Too many notes (max 500)' };
+/** Validate one note list from untrusted JSON. Unknown fields are dropped. */
+export function parseNotes(list: unknown, orientation: Orientation): { ok: true; notes: Note[] } | { ok: false; error: string } {
+  if (!Array.isArray(list)) return { ok: false, error: 'Board has no notes list' };
+  if (list.length > 500) return { ok: false, error: 'Too many notes on one board (max 500)' };
   const notes: Note[] = [];
-  for (const [i, raw] of b.notes.entries()) {
+  for (const [i, raw] of list.entries()) {
     const n = raw as Record<string, unknown>;
     if (!n || typeof n !== 'object' || !KINDS.includes(n.kind as NoteKind)) {
       return { ok: false, error: `Note ${i + 1}: unknown kind` };
@@ -199,8 +232,8 @@ export function parseBoard(input: unknown): ParseResult {
     if (n.image !== undefined && !(isStr(n.image) && n.image.startsWith('data:image/'))) {
       return { ok: false, error: `Note ${i + 1}: image must be a data URL` };
     }
-    const w = Math.min(Math.max(n.w as number, 80), 600);
-    const h = Math.min(Math.max(n.h as number, 80), 600);
+    const w = Math.min(Math.max(n.w as number, 60), 600);
+    const h = Math.min(Math.max(n.h as number, 60), 600);
     notes.push({
       id: n.id as string,
       kind: n.kind as NoteKind,
@@ -208,17 +241,41 @@ export function parseBoard(input: unknown): ParseResult {
       h,
       ...clampToBoard({ x: n.x as number, y: n.y as number, w, h }, orientation),
       rotation: Math.max(-15, Math.min(15, n.rotation as number)),
-      color: isStr(n.color) && /^#[0-9a-f]{6}$/i.test(n.color) ? n.color : '#fff27a',
+      color: isStr(n.color) && HEX.test(n.color) ? n.color : '#fff27a',
       pin: PIN_COLORS.includes(n.pin as PinColor) ? (n.pin as PinColor) : 'red',
       text: (n.text as string).slice(0, 2000),
       image: n.image as string | undefined,
+      ...(TAPES.includes(n.tape as Tape) ? { tape: n.tape as Tape } : {}),
       z: n.z as number,
       createdAt: isNum(n.createdAt) ? n.createdAt : Date.now(),
       updatedAt: isNum(n.updatedAt) ? n.updatedAt : Date.now(),
     });
   }
+  return { ok: true, notes };
+}
+
+export type ParseResult = { ok: true; board: Board } | { ok: false; error: string };
+
+/** One board: the v2 shape, or a v1 single-board export (`version: 1`). */
+export function parseBoard(input: unknown): ParseResult {
+  if (!input || typeof input !== 'object') return { ok: false, error: 'Not a board file' };
+  const b = input as Record<string, unknown>;
+  if (b.version !== undefined && b.version !== 1) return { ok: false, error: 'Unsupported board version' };
+  const orientation: Orientation = b.orientation === 'portrait' ? 'portrait' : 'landscape';
+  const parsed = parseNotes(b.notes, orientation);
+  if (!parsed.ok) return parsed;
   return {
     ok: true,
-    board: { version: 1, title: isStr(b.title) ? b.title.slice(0, 80) : 'My board', orientation, notes },
+    board: {
+      id: isStr(b.id) && b.id ? b.id.slice(0, 64) : newId(),
+      title: isStr(b.title) ? b.title.slice(0, 80) : 'My board',
+      orientation,
+      surface: (Object.keys(SURFACES) as Surface[]).includes(b.surface as Surface) ? (b.surface as Surface) : 'cork',
+      x: isNum(b.x) ? b.x : 0,
+      y: isNum(b.y) ? b.y : 0,
+      notes: parsed.notes,
+    },
   };
 }
+
+export const isHexColor = (c: string) => HEX.test(c);
