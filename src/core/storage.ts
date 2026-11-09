@@ -1,29 +1,27 @@
 import { del, get, set } from 'idb-keyval';
-import { type Board, parseBoard } from './board';
+import { parseWorkspace, type Workspace } from './workspace';
 
-const KEY = 'corkboard:board';
+const KEY = 'corkboard:workspace';
+const LEGACY_KEY = 'corkboard:board'; // v1.0 stored a single board here
 
 /** IndexedDB (via idb-keyval) — roomy enough for photos, unlike localStorage. */
-export async function loadBoard(): Promise<Board | null> {
+export async function loadWorkspace(): Promise<Workspace | null> {
   try {
-    const raw = await get(KEY);
+    const raw = (await get(KEY)) ?? (await get(LEGACY_KEY));
     if (!raw) return null;
-    const r = parseBoard(raw);
-    return r.ok ? r.board : null;
+    const r = parseWorkspace(raw);
+    return r.ok ? r.workspace : null;
   } catch {
     return null;
   }
 }
 
-export async function saveBoard(board: Board): Promise<boolean> {
+export async function saveWorkspace(ws: Workspace): Promise<boolean> {
   try {
-    await set(KEY, JSON.parse(JSON.stringify(board)));
+    await set(KEY, JSON.parse(JSON.stringify(ws)));
+    await del(LEGACY_KEY);
     return true;
   } catch {
     return false;
   }
-}
-
-export async function forgetBoard(): Promise<void> {
-  await del(KEY).catch(() => undefined);
 }
