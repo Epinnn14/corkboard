@@ -12,6 +12,7 @@ const space = ref<InstanceType<typeof Workspace> | null>(null);
 const importInput = ref<HTMLInputElement | null>(null);
 const toast = ref('');
 const boardsOpen = ref(false);
+const fileOpen = ref(false);
 const paletteOpen = ref(false);
 const stickersOpen = ref(false);
 const sheetOpen = ref(false);
@@ -136,13 +137,15 @@ function onKey(e: KeyboardEvent) {
   else if (e.key === '-') space.value?.zoomBy(1 / 1.2);
   else if (e.key === 'Escape') {
     store.select(null);
-    boardsOpen.value = paletteOpen.value = stickersOpen.value = sheetOpen.value = false;
+    boardsOpen.value = fileOpen.value = paletteOpen.value = stickersOpen.value = sheetOpen.value = false;
   }
 }
 
 function closeMenus(e: PointerEvent) {
   const t = e.target as HTMLElement;
-  if (!t.closest('.menu-wrap')) boardsOpen.value = false;
+  if (!t.closest('.menu-wrap')) boardsOpen.value = fileOpen.value = false;
+  else if (t.closest('.file-menu')) boardsOpen.value = false;
+  else fileOpen.value = false;
   if (!t.closest('.palette-wrap')) paletteOpen.value = false;
   if (!t.closest('.stickers-wrap')) stickersOpen.value = false;
 }
@@ -160,7 +163,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="app">
     <header class="bar">
-      <div class="brand"><span class="brand-pin" aria-hidden="true" />corkboard</div>
+      <div class="brand" aria-label="corkboard"><span class="brand-pin" aria-hidden="true" />corkboard</div>
       <div class="menu-wrap">
         <button class="ghost" :aria-expanded="boardsOpen" @click="boardsOpen = !boardsOpen">
           Boards <b>{{ store.boards.length }}</b> ▾
@@ -183,9 +186,28 @@ onBeforeUnmount(() => {
       </div>
       <button class="solid" title="New board" @click="sheetOpen = true">+ Board</button>
       <div class="spacer" />
-      <button class="ghost" title="Save the current board as a PNG" @click="saveImage">Save as image</button>
-      <button class="ghost" @click="exportJson">Export</button>
-      <button class="ghost" @click="importInput?.click()">Import</button>
+      <button class="ghost" title="Save the current board as a PNG image" @click="saveImage">Save</button>
+      <div class="menu-wrap file-menu">
+        <button
+          class="ghost icon"
+          :aria-expanded="fileOpen"
+          aria-label="More: import or export"
+          title="Import or export"
+          @click="fileOpen = !fileOpen"
+        >
+          +
+        </button>
+        <div v-if="fileOpen" class="menu right" role="menu">
+          <button class="menu-item" role="menuitem" @click="fileOpen = false; importInput?.click()">
+            <span class="mi-ico" aria-hidden="true">📥</span>
+            <span class="mi-title">Import<small>add boards from a .json file</small></span>
+          </button>
+          <button class="menu-item" role="menuitem" @click="fileOpen = false; exportJson()">
+            <span class="mi-ico" aria-hidden="true">📤</span>
+            <span class="mi-title">Export<small>all boards as one .json file</small></span>
+          </button>
+        </div>
+      </div>
       <input ref="importInput" type="file" accept="application/json,.json" hidden @change="importJson" />
     </header>
 

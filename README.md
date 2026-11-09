@@ -55,7 +55,7 @@ New boards come blank or from a template:
 | Change a note | select it: colour, tape/pin, duplicate, remove |
 | Undo | the toast's **Undo**, or `Ctrl/⌘ + Z` (notes, cleared boards and deleted boards) |
 | Keys | `N` new sticky · `B` new blank board · `Delete` remove · `Esc` deselect |
-| Keep / share | **Save as image** (PNG of the current board) · **Export / Import** the whole workspace as JSON |
+| Keep / share | **Save** downloads the current board as a PNG · the **+** menu has **Import** and **Export** (all boards as JSON) |
 
 ## Run it
 

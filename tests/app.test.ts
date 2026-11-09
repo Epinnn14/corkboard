@@ -99,3 +99,21 @@ describe('App', () => {
     wrapper.unmount();
   });
 });
+
+describe('top bar', () => {
+  it('Save is one button; Import and Export live in the + menu', async () => {
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    const wrapper = mount(App, { attachTo: document.body });
+    const labels = wrapper.findAll('.bar > button.ghost').map((b) => b.text());
+    expect(labels).toContain('Save');
+    expect(wrapper.text()).not.toContain('Save as image');
+    expect(wrapper.find('.file-menu .menu').exists()).toBe(false);
+    await wrapper.find('.file-menu .icon').trigger('click');
+    const items = wrapper.findAll('.file-menu .menu-item').map((i) => i.find('.mi-title').text());
+    expect(items[0]).toMatch(/^Import/);
+    expect(items[1]).toMatch(/^Export/);
+    wrapper.unmount();
+  });
+});

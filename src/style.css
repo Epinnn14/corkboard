@@ -68,6 +68,10 @@ button { font: inherit; cursor: pointer; }
 .mi-shape.portrait { width: 12px; height: 18px; }
 .mi-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mi-count { color: rgba(43, 38, 32, 0.5); font-variant-numeric: tabular-nums; }
+.menu.right { left: auto; right: 0; min-width: 260px; }
+.mi-ico { font-size: 18px; width: 24px; text-align: center; flex: none; }
+.mi-title small { display: block; font-size: 12.5px; color: rgba(43, 38, 32, 0.55); white-space: normal; }
+.bar .ghost.icon { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; font-size: 20px; line-height: 1; }
 .menu-empty { margin: 8px 10px; color: rgba(43, 38, 32, 0.6); }
 
 .dock {
@@ -165,6 +169,10 @@ button { font: inherit; cursor: pointer; }
   .dock .dock-palette { grid-template-columns: repeat(7, 34px); }
   .dock .dock-palette .dot { width: 34px; height: 34px; }
   .bar { gap: 6px; }
+}
+@media (max-width: 520px) {
+  .brand { font-size: 0; gap: 0; margin-right: 0; }
+  .bar { flex-wrap: nowrap; }
 }
 
 .sticker-sheet {
