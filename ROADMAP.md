@@ -16,6 +16,7 @@
 - [ ] Keyboard moving of notes (arrow keys) and richer screen-reader labels.
 
 ## Done
+- [x] v1.2: import txt/md/csv/html/pdf/docx/images/json; export Word, PDF, text, Markdown, JSON
 - [x] v1.1: endless workspace with any number of boards, pan/zoom, drag notes between boards,
       templates, 12 colours + custom, stickers, washi tape, four surfaces, auto orientation
 - [x] v1.0: sticky notes, index cards, lined paper, polaroids, four-pin cards, undo, PNG/JSON export

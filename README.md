@@ -55,14 +55,35 @@ New boards come blank or from a template:
 | Change a note | select it: colour, tape/pin, duplicate, remove |
 | Undo | the toast's **Undo**, or `Ctrl/⌘ + Z` (notes, cleared boards and deleted boards) |
 | Keys | `N` new sticky · `B` new blank board · `Delete` remove · `Esc` deselect |
-| Keep / share | **Save** downloads the current board as a PNG · the **+** menu has **Import** and **Export** (all boards as JSON) |
+| Keep / share | **Save** downloads the current board as a PNG · the **+** menu imports and exports files (below) |
+
+## Import & export
+
+The **+** menu (top right) turns files into boards and boards into files.
+
+**Import** (pick several files at once):
+
+| File | Becomes |
+|---|---|
+| `.txt`, `.html` | a board named after the file; short paragraphs → sticky notes, medium → index cards, long → lined paper; bullet lists → one sticky per item |
+| `.md` | same, plus `# Title` names the board and `## Headings` become index cards |
+| `.csv` | one note per row, labelled by the header (`Due: Fri`) |
+| `.pdf` | the PDF's text, split into paragraphs (pdf.js) |
+| `.docx` | the Word document's text (mammoth) |
+| images | polaroids on the current board |
+| `.json` | a corkboard backup |
+
+Big files flow onto extra boards ("Lecture (1)", "Lecture (2)" …).
+
+**Export all boards as:** Word (.docx, sticky colours as shading, photos embedded) · PDF (a picture of each board
+plus every note as searchable text) · plain text · Markdown (for Notion/Obsidian) · JSON backup.
 
 ## Run it
 
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 34 tests
+npm test          # 51 tests
 npm run build     # static site in dist/ (relative paths, host it anywhere)
 ```
 
@@ -71,7 +92,7 @@ Pushing to `main` runs the tests and deploys to GitHub Pages
 
 ## How it's built
 
-Vue 3 (`<script setup>`) · Pinia · TypeScript · Vite · idb-keyval · html-to-image ·
+Vue 3 (`<script setup>`) · Pinia · TypeScript · Vite · idb-keyval · html-to-image · pdf.js · mammoth · docx · jsPDF ·
 Fontsource (Bricolage Grotesque, Caveat, Patrick Hand) · Vitest + Vue Test Utils + fake-indexeddb
 
 ```
@@ -80,6 +101,8 @@ src/
 │   ├── board.ts          notes, colours, stickers, tapes, surfaces, safe parsing
 │   ├── workspace.ts      camera (fit, zoom-at-cursor), board placement, hit-testing, file import + v1 migration
 │   ├── templates.ts      planner / kanban / study / moodboard / brainstorm layouts (work in both orientations)
+│   ├── convert.ts        text / markdown / csv → packed notes across boards, notes → txt / md
+│   ├── io.ts             file readers (pdf.js, mammoth) and writers (docx, jsPDF), loaded on demand
 │   ├── texture.ts        cork, felt, linen and dot-grid surfaces painted on a canvas
 │   └── storage.ts        IndexedDB persistence
 ├── stores/workspace.ts   Pinia: boards, notes, cross-board drops, undo
