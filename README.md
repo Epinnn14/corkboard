@@ -54,8 +54,23 @@ New boards come blank or from a template:
 | Pan / zoom | drag empty space · scroll wheel or pinch · `+` `−` · `0` shows everything |
 | Change a note | select it: colour, tape/pin, duplicate, remove |
 | Undo | the toast's **Undo**, or `Ctrl/⌘ + Z` (notes, cleared boards and deleted boards) |
-| Keys | `N` new sticky · `B` new board · `Delete` remove · `Esc` deselect |
+| Dates | select a note → 📅: pick a day and time, a reminder (at time, 10 min, 1 h, 1 day before); tap the chip to tick it done |
+| Keys | `N` new sticky · `B` new board · `A` agenda · `Delete` remove · `Esc` deselect |
 | Keep / share | **Save** downloads the current board as a PNG · the **+** menu has New board, Import and Export (below) |
+
+## Dates, reminders, widget & wallpaper
+
+- **Due dates** on any note show a chip (overdue red, today orange, done ticked). **Agenda** (top right, or `A`)
+  lists everything by Overdue / Today / Tomorrow / This week / Later; click an item to jump to its note.
+- **Reminders** pop up as a banner and a system notification while corkboard is open (a tab or the installed app).
+  For reminders when it is closed, use **Add to calendar** in the date editor: an `.ics` file with an alarm
+  (Windows Calendar, Outlook, Apple, Google) or a Google Calendar link.
+- **Install as an app**: Chrome/Edge on Windows, Android Chrome (*Add to Home screen*), iPhone Safari (*Share → Add to
+  Home Screen*). It works offline and gets its own icon, with shortcuts to *Widget* and *Agenda*.
+- **Widget mode** (`#widget`, in the **+** menu): a big date card with the clock, what's up next and a live mini
+  board. Pin it as a small always-open window on your desktop, or open it from the home-screen shortcut on a phone.
+- **Wallpapers** (in the **+** menu): *Desktop wallpaper* (2560×1440) and *Phone wallpaper* (1170×2532, with the top
+  third left clear for the lock-screen clock), so the whole board fits instead of being cropped.
 
 ## Import & export
 
@@ -83,7 +98,7 @@ plus every note as searchable text) · plain text · Markdown (for Notion/Obsidi
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 51 tests
+npm test          # 63 tests
 npm run build     # static site in dist/ (relative paths, host it anywhere)
 ```
 
@@ -93,7 +108,7 @@ Pushing to `main` runs the tests and deploys to GitHub Pages
 ## How it's built
 
 Vue 3 (`<script setup>`) · Pinia · TypeScript · Vite · idb-keyval · html-to-image · pdf.js · mammoth · docx · jsPDF ·
-Fontsource (Bricolage Grotesque, Caveat, Patrick Hand) · Vitest + Vue Test Utils + fake-indexeddb
+vite-plugin-pwa · Fontsource (Bricolage Grotesque, Caveat, Patrick Hand) · Vitest + Vue Test Utils + fake-indexeddb
 
 ```
 src/
@@ -103,13 +118,19 @@ src/
 │   ├── templates.ts      planner / kanban / study / moodboard / brainstorm layouts (work in both orientations)
 │   ├── convert.ts        text / markdown / csv → packed notes across boards, notes → txt / md
 │   ├── io.ts             file readers (pdf.js, mammoth) and writers (docx, jsPDF), loaded on demand
+│   ├── dates.ts          due dates, agenda groups, reminder timing, .ics and Google Calendar links
+│   ├── notify.ts         system notifications (through the service worker when installed)
+│   ├── wallpaper.ts      desktop and phone wallpaper layouts
 │   ├── texture.ts        cork, felt, linen and dot-grid surfaces painted on a canvas
 │   └── storage.ts        IndexedDB persistence
 ├── stores/workspace.ts   Pinia: boards, notes, cross-board drops, undo
 └── components/
     ├── Workspace.vue     the endless canvas: pan, wheel/pinch zoom
     ├── BoardView.vue     one framed board with its name tag
-    ├── NoteItem.vue      one note: drag, edit, paper styles, stickers, tape, toolbar
+    ├── NoteItem.vue      one note: drag, edit, paper styles, stickers, tape, toolbar, due chip
+    ├── DueEditor.vue     date, reminder and add-to-calendar popover
+    ├── AgendaPanel.vue   every dated note across boards
+    ├── WidgetView.vue    the #widget screen
     └── PushPin.vue
 ```
 
