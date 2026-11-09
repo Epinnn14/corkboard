@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, ref, type Ref } from 'vue';
+import { computed, inject, nextTick, ref, type Ref, watch } from 'vue';
 import { CARD_COLORS, isHexColor, type Note, STICKY_COLORS } from '../core/board';
+import { dueLabel, dueState } from '../core/dates';
 import { fileToDataUrl } from '../core/image';
+import { useNow } from '../composables/now';
+import DueEditor from './DueEditor.vue';
 import { useWorkspace } from '../stores/workspace';
 import PushPin from './PushPin.vue';
 
@@ -13,6 +16,17 @@ const editor = ref<HTMLTextAreaElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const dragging = ref(false);
 const paletteOpen = ref(false);
+const dueOpen = ref(false);
+const now = useNow();
+const board = computed(() => store.find(props.note.id)?.board ?? null);
+const state = computed(() => dueState(props.note, now.value));
+const chip = computed(() => (props.note.due ? dueLabel(props.note.due, now.value) : ''));
+watch(
+  () => store.selectedId === props.note.id,
+  (sel) => {
+    if (!sel) dueOpen.value = paletteOpen.value = false;
+  },
+);
 const selected = computed(() => store.selectedId === props.note.id);
 const swatches = computed<readonly string[]>(() =>
   props.note.kind === 'sticky' ? STICKY_COLORS : props.note.kind === 'card' ? CARD_COLORS : [],
@@ -63,6 +77,7 @@ function onPointerMove(e: PointerEvent) {
   if (!dragging.value && Math.hypot(dx, dy) < 4) return;
   dragging.value = true;
   paletteOpen.value = false;
+  dueOpen.value = false;
   store.dragNote(props.note.id, start.x + dx, start.y + dy);
 }
 
@@ -101,6 +116,7 @@ async function onPhoto(e: Event) {
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     paletteOpen.value = false;
+    dueOpen.value = false;
     editor.value?.blur();
     store.select(null);
   }
@@ -148,6 +164,17 @@ function onKey(e: KeyboardEvent) {
     </template>
     <PushPin v-else class="pin top" :color="note.pin" />
 
+    <button
+      v-if="note.due"
+      class="due-chip"
+      :class="state"
+      :title="note.done ? 'Done — click to undo' : 'Mark as done'"
+      @pointerdown.stop
+      @dblclick.stop
+      @click="store.toggleDone(note.id)"
+    >
+      <span aria-hidden="true">{{ note.done ? '✔' : note.remind !== undefined ? '⏰' : '📅' }}</span>{{ chip }}
+    </button>
     <div v-if="selected && !dragging" class="note-tools" @pointerdown.stop @dblclick.stop>
       <template v-if="swatches.length">
         <button
@@ -155,7 +182,7 @@ function onKey(e: KeyboardEvent) {
           :style="{ background: note.color }"
           :aria-expanded="paletteOpen"
           title="Change colour"
-          @click="paletteOpen = !paletteOpen"
+          @click="paletteOpen = !paletteOpen; dueOpen = false"
         />
         <div v-if="paletteOpen" class="palette" role="group" aria-label="Colours">
           <button
@@ -182,6 +209,16 @@ function onKey(e: KeyboardEvent) {
       >
         {{ note.tape ? '🎀' : '📍' }}
       </button>
+      <button
+        class="tool"
+        :class="{ on: dueOpen }"
+        title="Date & reminder"
+        :aria-expanded="dueOpen"
+        @click="dueOpen = !dueOpen; paletteOpen = false"
+      >
+        📅
+      </button>
+      <DueEditor v-if="dueOpen && board" :note="note" :board="board" @close="dueOpen = false" />
       <button class="tool" title="Duplicate" @click="store.duplicateNote(note.id)">⧉</button>
       <button class="tool danger" title="Remove (Delete)" @click="store.removeNote(note.id)">🗑</button>
     </div>
@@ -369,6 +406,32 @@ function onKey(e: KeyboardEvent) {
 .custom span { color: #fff; font-weight: 700; font-size: 14px; text-shadow: 0 0 3px rgba(0, 0, 0, 0.6); }
 .custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; padding: 0; border: 0; }
 .tool { background: transparent; border: 0; color: #fff; font-size: 17px; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
-.tool:hover { background: rgba(255, 255, 255, 0.12); }
+.tool:hover, .tool.on { background: rgba(255, 255, 255, 0.16); }
+
+/* date chip, bottom-right of the note */
+.due-chip {
+  position: absolute;
+  right: -10px;
+  bottom: -12px;
+  z-index: 3;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font: 600 14px 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  background: #2b2620;
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  white-space: nowrap;
+  transform: rotate(calc(var(--rot) * -1));
+}
+.due-chip.overdue { background: #d9412b; }
+.due-chip.today { background: #f08c1a; }
+.due-chip.tomorrow { background: #7a5cf0; }
+.due-chip.done { background: #3c9a5f; text-decoration: line-through; }
+.note.sticker .due-chip { right: -20px; }
 .hidden-file { display: none; }
 </style>

@@ -211,6 +211,44 @@ export const useWorkspace = defineStore('workspace', {
       }
     },
 
+    setDue(id: string, due: string | undefined, remind?: number | null) {
+      const f = this.find(id);
+      if (!f) return;
+      const n = f.note;
+      if (!due) {
+        delete n.due;
+        delete n.remind;
+        delete n.done;
+        delete n.notified;
+      } else {
+        n.due = due;
+        if (remind === null) delete n.remind;
+        else if (remind !== undefined) n.remind = remind;
+        delete n.notified;
+      }
+      n.updatedAt = Date.now();
+    },
+
+    toggleDone(id: string) {
+      const f = this.find(id);
+      if (!f || !f.note.due) return;
+      if (f.note.done) delete f.note.done;
+      else f.note.done = true;
+    },
+
+    markNotified(id: string, key: string) {
+      const f = this.find(id);
+      if (f) f.note.notified = key;
+    },
+
+    /** Select a note and make its board active (agenda → board). */
+    reveal(id: string): string | null {
+      const f = this.find(id);
+      if (!f) return null;
+      this.select(id);
+      return f.board.id;
+    },
+
     /** pin → washi tape (cycling patterns) → pin */
     cycleFastener(id: string) {
       const f = this.find(id);
@@ -236,7 +274,14 @@ export const useWorkspace = defineStore('workspace', {
         at: { x: note.x + note.w / 2 + 30, y: note.y + note.h / 2 + 30 },
         color: note.color,
       });
-      board.notes.push({ ...copy, text: note.text, image: note.image, ...(note.tape ? { tape: note.tape } : {}) });
+      board.notes.push({
+        ...copy,
+        text: note.text,
+        image: note.image,
+        ...(note.tape ? { tape: note.tape } : {}),
+        ...(note.due ? { due: note.due } : {}),
+        ...(note.remind !== undefined ? { remind: note.remind } : {}),
+      });
       this.selectedId = copy.id;
     },
 
