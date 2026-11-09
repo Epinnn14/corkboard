@@ -1,0 +1,279 @@
+<script setup lang="ts">
+import { computed, inject, nextTick, ref, type Ref } from 'vue';
+import { CARD_COLORS, type Note, STICKY_COLORS } from '../core/board';
+import { fileToDataUrl } from '../core/image';
+import { useBoard } from '../stores/board';
+import PushPin from './PushPin.vue';
+
+const props = defineProps<{ note: Note }>();
+const store = useBoard();
+const scale = inject<Ref<number>>('scale', ref(1));
+
+const editor = ref<HTMLTextAreaElement | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
+const dragging = ref(false);
+const selected = computed(() => store.selectedId === props.note.id);
+const swatches = computed(() =>
+  props.note.kind === 'sticky' ? STICKY_COLORS : props.note.kind === 'card' ? CARD_COLORS : [],
+);
+
+const style = computed(() => ({
+  left: `${props.note.x}px`,
+  top: `${props.note.y}px`,
+  width: `${props.note.w}px`,
+  height: `${props.note.h}px`,
+  zIndex: String(props.note.z),
+  '--rot': `${dragging.value ? props.note.rotation * 0.4 : props.note.rotation}deg`,
+  '--paper': props.note.color,
+}));
+
+const placeholder: Record<Note['kind'], string> = {
+  sticky: 'Write something…',
+  index: 'Title\nnotes…',
+  lined: 'Notes…',
+  polaroid: 'caption',
+  card: 'Write something…',
+};
+
+// ---- drag: anywhere on the note moves it; a click without movement starts editing
+let start: { px: number; py: number; x: number; y: number; id: number } | null = null;
+
+function onPointerDown(e: PointerEvent) {
+  if (e.button !== 0) return;
+  const target = e.target as HTMLElement;
+  if (target.closest('.note-tools')) return;
+  // while editing, dragging inside the text selects text; the top strip (.grip) still moves the note
+  if (target === editor.value && document.activeElement === editor.value) return;
+  e.preventDefault();
+  store.select(props.note.id);
+  start = { px: e.clientX, py: e.clientY, x: props.note.x, y: props.note.y, id: e.pointerId };
+  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+}
+
+function onPointerMove(e: PointerEvent) {
+  if (!start || e.pointerId !== start.id) return;
+  const dx = (e.clientX - start.px) / scale.value;
+  const dy = (e.clientY - start.py) / scale.value;
+  if (!dragging.value && Math.hypot(dx, dy) < 4) return;
+  dragging.value = true;
+  store.move(props.note.id, start.x + dx, start.y + dy);
+}
+
+async function onPointerUp(e: PointerEvent) {
+  if (!start || e.pointerId !== start.id) return;
+  const wasDrag = dragging.value;
+  start = null;
+  dragging.value = false;
+  if (!wasDrag) {
+    if (props.note.kind === 'polaroid' && (e.target as HTMLElement).closest('.photo')) {
+      fileInput.value?.click();
+      return;
+    }
+    await nextTick();
+    editor.value?.focus();
+  }
+}
+
+function onInput(e: Event) {
+  store.update(props.note.id, { text: (e.target as HTMLTextAreaElement).value });
+}
+
+async function onPhoto(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  try {
+    store.update(props.note.id, { image: await fileToDataUrl(file) });
+  } catch (err) {
+    alert((err as Error).message);
+  }
+}
+
+function onKey(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    editor.value?.blur();
+    store.select(null);
+  }
+}
+</script>
+
+<template>
+  <div
+    class="note"
+    :class="[note.kind, { selected, dragging }]"
+    :style="style"
+    :data-id="note.id"
+    @pointerdown="onPointerDown"
+    @pointermove="onPointerMove"
+    @pointerup="onPointerUp"
+    @pointercancel="onPointerUp"
+  >
+    <div class="grip" title="Drag to move" />
+    <div class="paper">
+      <div v-if="note.kind === 'polaroid'" class="photo" :title="selected ? 'Click to choose a photo' : ''">
+        <img v-if="note.image" :src="note.image" alt="" draggable="false" />
+        <span v-else class="photo-hint">click to add a photo</span>
+      </div>
+      <div v-if="note.kind === 'index'" class="index-rule" />
+      <textarea
+        ref="editor"
+        class="ink"
+        :value="note.text"
+        :placeholder="placeholder[note.kind]"
+        :maxlength="note.kind === 'polaroid' ? 60 : 2000"
+        spellcheck="false"
+        @input="onInput"
+        @keydown="onKey"
+      />
+    </div>
+
+    <template v-if="note.kind === 'card'">
+      <PushPin class="pin tl" :color="note.pin" />
+      <PushPin class="pin tr" :color="note.pin" />
+      <PushPin class="pin bl" :color="note.pin" />
+      <PushPin class="pin br" :color="note.pin" />
+    </template>
+    <PushPin v-else class="pin top" :color="note.pin" />
+
+    <div v-if="selected && !dragging" class="note-tools" @pointerdown.stop>
+      <button
+        v-for="c in swatches"
+        :key="c"
+        class="swatch"
+        :class="{ on: c === note.color }"
+        :style="{ background: c }"
+        :title="`Colour ${c}`"
+        @click="store.update(note.id, { color: c })"
+      />
+      <button v-if="note.kind === 'polaroid'" class="tool" title="Choose photo" @click="fileInput?.click()">🖼</button>
+      <button class="tool" title="Duplicate" @click="store.duplicate(note.id)">⧉</button>
+      <button class="tool danger" title="Remove (Delete)" @click="store.remove(note.id)">🗑</button>
+    </div>
+    <input
+      v-if="note.kind === 'polaroid'"
+      ref="fileInput"
+      class="hidden-file"
+      type="file"
+      accept="image/*"
+      @change="onPhoto"
+    />
+  </div>
+</template>
+
+<style scoped>
+.note {
+  position: absolute;
+  transform: rotate(var(--rot));
+  transform-origin: 50% 0;
+  touch-action: none;
+  cursor: grab;
+  transition: transform 0.15s ease, filter 0.15s ease;
+  user-select: none;
+}
+.note.dragging { cursor: grabbing; transition: none; filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.35)); }
+.note.selected .paper { outline: 2px dashed rgba(40, 30, 10, 0.45); outline-offset: 4px; }
+
+.paper {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.25), 0 8px 14px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+}
+.ink {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: #2b2620;
+  font: 400 26px/1.25 'Caveat', 'Comic Sans MS', cursive;
+  padding: 34px 18px 14px;
+  cursor: inherit;
+  overflow: hidden;
+}
+.ink:focus { cursor: text; }
+.ink::placeholder { color: rgba(43, 38, 32, 0.35); }
+
+/* sticky: soft gradient and a lifted bottom corner */
+.sticky .paper {
+  background: linear-gradient(170deg, color-mix(in srgb, var(--paper) 88%, white) 0%, var(--paper) 55%, color-mix(in srgb, var(--paper) 90%, black) 100%);
+  border-bottom-right-radius: 60px 6px;
+}
+.sticky .paper::after {
+  content: '';
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 60%;
+  height: 20%;
+  z-index: -1;
+  box-shadow: 8px 10px 14px rgba(0, 0, 0, 0.35);
+  transform: rotate(4deg);
+}
+.sticky .ink { font-size: 30px; }
+
+/* index card: red header rule, blue rules aligned to the text lines (26px) */
+.index .paper {
+  background:
+    linear-gradient(var(--paper) 0 46px, rgba(231, 111, 111, 0.85) 46px 49px, transparent 49px),
+    linear-gradient(transparent 24px, rgba(122, 172, 222, 0.7) 24px 26px) 0 22px / 100% 26px repeat-y,
+    var(--paper);
+}
+.index .ink { font: 400 21px/26px 'Patrick Hand', 'Comic Sans MS', cursive; padding: 22px 18px 8px; }
+
+/* lined notebook paper with a margin line and a perforated top edge */
+.lined .paper {
+  background:
+    linear-gradient(#f7f7f4 0 39px, transparent 39px),
+    linear-gradient(90deg, transparent 37px, rgba(231, 111, 111, 0.55) 37px 40px, transparent 40px),
+    linear-gradient(transparent 24px, rgba(150, 180, 214, 0.65) 24px 26px) 0 40px / 100% 26px repeat-y,
+    #f7f7f4;
+  -webkit-mask: radial-gradient(circle 4px at 10px 0, transparent 98%, #000) -6px 0 / 16px 100% repeat-x;
+  mask: radial-gradient(circle 4px at 10px 0, transparent 98%, #000) -6px 0 / 16px 100% repeat-x;
+}
+.lined .ink { font: 400 21px/26px 'Patrick Hand', 'Comic Sans MS', cursive; padding: 40px 14px 8px 48px; }
+
+/* polaroid */
+.polaroid .paper { background: #fbfbf8; padding: 14px 14px 0; }
+.photo { height: 190px; background: #111; overflow: hidden; display: grid; place-items: center; }
+.photo img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.photo-hint { color: #8a8a8a; font: 16px 'Patrick Hand', cursive; }
+.polaroid .ink { text-align: center; padding: 10px 6px 4px; font-size: 24px; }
+
+/* plain card with four pins */
+.card .paper { background: linear-gradient(160deg, color-mix(in srgb, var(--paper) 92%, white), var(--paper)); }
+.card .ink { font: 400 22px/1.3 'Patrick Hand', 'Comic Sans MS', cursive; padding: 30px 24px 18px; }
+
+.pin { position: absolute; pointer-events: none; z-index: 2; }
+.grip { position: absolute; left: 0; right: 0; top: 0; height: 26px; z-index: 1; }
+.note.selected .grip { cursor: move; }
+.pin.top { left: calc(50% - 15px); top: -14px; }
+.pin.tl { left: -8px; top: -10px; }
+.pin.tr { right: -8px; top: -10px; }
+.pin.bl { left: -8px; bottom: -14px; }
+.pin.br { right: -8px; bottom: -14px; }
+
+.note-tools {
+  position: absolute;
+  left: 50%;
+  bottom: -54px;
+  transform: translateX(-50%) rotate(calc(var(--rot) * -1));
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: #2b2620;
+  padding: 6px 8px;
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  z-index: 3;
+  cursor: default;
+  white-space: nowrap;
+}
+.swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.swatch.on { border-color: #fff; }
+.tool { background: transparent; border: 0; color: #fff; font-size: 17px; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.tool:hover { background: rgba(255, 255, 255, 0.12); }
+.hidden-file { display: none; }
+</style>
