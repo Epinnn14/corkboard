@@ -19,16 +19,30 @@ office folks juggling tasks and meetings, and anyone who thinks better with pape
 
 ## Install
 
-Click **Install on laptop** or **Install on phone** above (or scan the code with your phone camera).
-corkboard opens with an install window ready for the device you're on:
+<p align="center">
+  <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-laptop.svg" alt="Install on laptop" height="56"></a>
+  &nbsp;
+  <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-phone.svg" alt="Install on phone" height="56"></a>
+</p>
 
-<img src="docs/install-qr.svg" width="150" align="right" alt="QR code to install corkboard on a phone">
+<p align="center">
+  <a href="https://epinnn14.github.io/corkboard/#install"><b>epinnn14.github.io/corkboard/#install</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://epinnn14.github.io/corkboard/">open in the browser without installing</a>
+</p>
+
+Click a button: corkboard opens with an install window ready for the device you're on.
 
 - **Windows / Mac / Chromebook (Chrome or Edge), Android:** one **Install now** button, then confirm once.
   corkboard gets its own window and lands in the Start menu, taskbar, Dock or home screen.
 - **iPhone / iPad:** Apple doesn't let websites show an install button, so the window shows the two taps:
   *Share → Add to Home Screen*.
 - **Firefox on a laptop** can't install web apps; it still runs fine in a tab.
+
+<details>
+<summary>Reading this on a laptop but want it on your phone? Scan this code</summary>
+<p><img src="docs/install-qr.svg" width="160" alt="QR code that opens the corkboard install page"></p>
+</details>
 
 No app store, no account, about 1 MB, works offline. To remove it, uninstall it like any other app.
 For security, browsers always ask you to confirm; no website can install itself silently.
