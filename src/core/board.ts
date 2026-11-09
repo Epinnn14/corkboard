@@ -40,6 +40,13 @@ export interface Note {
   image?: string;
   /** washi tape instead of a push-pin */
   tape?: Tape;
+  /** due date as local wall time, "YYYY-MM-DDTHH:mm" */
+  due?: string;
+  /** minutes before `due` to remind; undefined = no reminder */
+  remind?: number;
+  done?: boolean;
+  /** the due+remind key a notification was already shown for */
+  notified?: string;
   z: number;
   createdAt: number;
   updatedAt: number;
@@ -215,6 +222,7 @@ const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFin
 const isStr = (v: unknown): v is string => typeof v === 'string';
 
 const HEX = /^#[0-9a-f]{6}$/i;
+const DUE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
 /** Validate one note list from untrusted JSON. Unknown fields are dropped. */
 export function parseNotes(list: unknown, orientation: Orientation): { ok: true; notes: Note[] } | { ok: false; error: string } {
@@ -246,6 +254,10 @@ export function parseNotes(list: unknown, orientation: Orientation): { ok: true;
       text: (n.text as string).slice(0, 2000),
       image: n.image as string | undefined,
       ...(TAPES.includes(n.tape as Tape) ? { tape: n.tape as Tape } : {}),
+      ...(isStr(n.due) && DUE.test(n.due) ? { due: n.due } : {}),
+      ...(isNum(n.remind) && n.remind >= 0 && n.remind <= 60 * 24 * 7 ? { remind: Math.round(n.remind) } : {}),
+      ...(n.done === true ? { done: true } : {}),
+      ...(isStr(n.notified) ? { notified: n.notified.slice(0, 40) } : {}),
       z: n.z as number,
       createdAt: isNum(n.createdAt) ? n.createdAt : Date.now(),
       updatedAt: isNum(n.updatedAt) ? n.updatedAt : Date.now(),
