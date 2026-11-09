@@ -4,13 +4,7 @@
 polaroids, stickers and washi tape, plan your week, run a kanban, build a moodboard.
 No account, no server: everything stays on your device.
 
-<p align="center">
-  <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-laptop.svg" alt="Install on laptop" height="56"></a>
-  &nbsp;
-  <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-phone.svg" alt="Install on phone" height="56"></a>
-  <br>
-  <sub><a href="https://epinnn14.github.io/corkboard/">or just open it in the browser</a></sub>
-</p>
+**Install on laptop or phone: [here](https://epinnn14.github.io/corkboard/#install)** · or just open it in the browser [here](https://epinnn14.github.io/corkboard/)
 
 ![A board with sticky notes, an index card, a polaroid and stickers](docs/board.jpg)
 
@@ -19,19 +13,9 @@ office folks juggling tasks and meetings, and anyone who thinks better with pape
 
 ## Install
 
-<p align="center">
-  <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-laptop.svg" alt="Install on laptop" height="56"></a>
-  &nbsp;
-  <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-phone.svg" alt="Install on phone" height="56"></a>
-</p>
+**Install on laptop or phone: [here](https://epinnn14.github.io/corkboard/#install)**
 
-<p align="center">
-  <a href="https://epinnn14.github.io/corkboard/#install"><b>epinnn14.github.io/corkboard/#install</b></a>
-  &nbsp;·&nbsp;
-  <a href="https://epinnn14.github.io/corkboard/">open in the browser without installing</a>
-</p>
-
-Click a button: corkboard opens with an install window ready for the device you're on.
+Open the link: corkboard opens with an install window ready for the device you're on.
 
 - **Windows / Mac / Chromebook (Chrome or Edge), Android:** one **Install now** button, then confirm once.
   corkboard gets its own window and lands in the Start menu, taskbar, Dock or home screen.
