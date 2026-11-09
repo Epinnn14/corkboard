@@ -1,71 +1,96 @@
 # corkboard
 
-**A cork board in your browser.** Pin sticky notes, index cards, lined paper, cards and
-polaroid photos, drag them around, write on them — and everything stays on your device.
+**An endless wall of cork boards in your browser.** Pin sticky notes, index cards, lined paper,
+polaroids, stickers and washi tape, plan your week, run a kanban, build a moodboard.
+No account, no server: everything stays on your device.
 
-![Corkboard](docs/board.jpg)
+![A board with sticky notes, an index card, a polaroid and stickers](docs/board.jpg)
 
-No account, no server, no tracking: the board lives in your browser's IndexedDB.
-Use it as a personal to-do wall, a mood board, a family notice board on a kitchen tablet,
-or a planning wall for a project.
+Made for the way people actually plan: students with exams and group projects,
+office folks juggling tasks and meetings, and anyone who thinks better with paper on a wall.
 
-## What you can pin
+## Boards, as many as you want
 
-| | | |
-|---|---|---|
-| **Sticky note** — 6 colours, curled corner | **Index card** — red header rule, blue lines | **Lined paper** — margin and perforated edge |
-| **Photo** — polaroid frame with your own picture and a caption | **Card** — held by four pins | |
+The workspace has no edges. Add a board for every class, client or side quest, drag boards
+around, zoom out to see everything, and drag a note from one board straight onto another.
 
-Each note gets a slight random tilt and a push-pin, like the real thing.
+![The workspace zoomed out: six boards side by side](docs/workspace.jpg)
 
-## Features
+New boards come blank or from a template:
 
-- **Double-click** anywhere on the cork to stick a new note there, or use the dock at the bottom.
-- **Drag** notes anywhere (mouse or touch); the one you touch comes to the front.
-- **Click** a note to write on it — handwritten fonts (Caveat, Patrick Hand) bundled locally.
-- Selected notes get a small toolbar: **change colour**, **choose photo**, **duplicate**, **remove** — with **Undo**.
-- **Landscape or portrait** board; the board scales to any screen and looks the same everywhere.
-- **Save as image** (PNG of the whole board), **Export / Import** the board as JSON.
-- Photos are downscaled (≤ 640 px JPEG) before saving so the board stays light.
-- Keyboard: `N` new sticky note · `Delete` remove selected · `Ctrl/⌘ + Z` undo remove · `Esc` deselect.
+| Template | What's on it |
+|---|---|
+| 🗓️ **Weekly planner** | an index card for each day + the week's one big goal |
+| ✅ **Kanban** | To do → Doing → Done, on midnight felt |
+| 📚 **Study plan** | exam card, topics checklist, schedule, pomodoro, study buddy photo |
+| 🌈 **Moodboard** | taped polaroids and vibe words on blush linen |
+| 💡 **Brainstorm** | one big question in the middle, a ring of rainbow stickies |
 
-<p align="center"><img src="docs/selected.png" width="320" alt="Selected note with its toolbar"></p>
+![Template picker](docs/templates.jpg)
+
+## On every board
+
+- **Sticky notes** in 12 colours (canary to periwinkle) plus a picker for any colour you like.
+- **Index cards**, **lined paper** with a perforated edge, **cards** held by four pins.
+- **Polaroids** with your own photos (downscaled to stay light) and a handwritten caption.
+- **Stickers**: a sheet of 24 die-cut emoji (✨🔥💯✅📚☕🧠🚀🫶…).
+- **Washi tape** instead of a push-pin: pink stripes, mint dots, sun grid, kraft or lilac check.
+- **Four surfaces** per board: cork, midnight felt, blush linen, dot-grid paper.
+- Boards are **landscape on wide screens and portrait on phones**, picked automatically.
+
+<p align="center">
+  <img src="docs/toolbar.jpg" width="360" alt="A selected sticky note with its colour palette">
+  &nbsp;
+  <img src="docs/mobile.jpg" width="220" alt="corkboard on a phone">
+</p>
+
+## How to use it
+
+| | |
+|---|---|
+| Add a note | double-click the board, or use the dock at the bottom |
+| Write | click a note |
+| Move | drag a note (also onto another board), drag a board by its frame or name tag |
+| Pan / zoom | drag empty space · scroll wheel or pinch · `+` `−` · `0` shows everything |
+| Change a note | select it: colour, tape/pin, duplicate, remove |
+| Undo | the toast's **Undo**, or `Ctrl/⌘ + Z` (notes, cleared boards and deleted boards) |
+| Keys | `N` new sticky · `B` new blank board · `Delete` remove · `Esc` deselect |
+| Keep / share | **Save as image** (PNG of the current board) · **Export / Import** the whole workspace as JSON |
 
 ## Run it
 
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 19 tests
-npm run build     # static site in dist/ (relative paths — host it anywhere)
+npm test          # 34 tests
+npm run build     # static site in dist/ (relative paths, host it anywhere)
 ```
 
 Pushing to `main` runs the tests and deploys to GitHub Pages
-(*Settings → Pages → Source: GitHub Actions*).
+(*Settings → Pages → Source: GitHub Actions*). Workspaces from v1.0 (single board) are migrated automatically.
 
 ## How it's built
 
-Vue 3 (`<script setup>`) · Pinia · TypeScript · Vite · idb-keyval · html-to-image · Fontsource ·
-Vitest + Vue Test Utils + fake-indexeddb
+Vue 3 (`<script setup>`) · Pinia · TypeScript · Vite · idb-keyval · html-to-image ·
+Fontsource (Bricolage Grotesque, Caveat, Patrick Hand) · Vitest + Vue Test Utils + fake-indexeddb
 
 ```
 src/
-├── core/
-│   ├── board.ts      note model, placement (least-overlap spot), z-order, orientation, safe JSON import
-│   ├── storage.ts    IndexedDB persistence
-│   ├── texture.ts    procedural cork texture painted on a canvas
-│   └── image.ts      photo downscaling
-├── stores/board.ts   Pinia store: add / move / select / remove + undo / duplicate
+├── core/                 plain TypeScript, no Vue
+│   ├── board.ts          notes, colours, stickers, tapes, surfaces, safe parsing
+│   ├── workspace.ts      camera (fit, zoom-at-cursor), board placement, hit-testing, file import + v1 migration
+│   ├── templates.ts      planner / kanban / study / moodboard / brainstorm layouts (work in both orientations)
+│   ├── texture.ts        cork, felt, linen and dot-grid surfaces painted on a canvas
+│   └── storage.ts        IndexedDB persistence
+├── stores/workspace.ts   Pinia: boards, notes, cross-board drops, undo
 └── components/
-    ├── Corkboard.vue the framed board, scaling to fit the window
-    ├── NoteItem.vue  one note: drag, edit, per-kind paper styles, toolbar
-    └── PushPin.vue   SVG push-pin
+    ├── Workspace.vue     the endless canvas: pan, wheel/pinch zoom
+    ├── BoardView.vue     one framed board with its name tag
+    ├── NoteItem.vue      one note: drag, edit, paper styles, stickers, tape, toolbar
+    └── PushPin.vue
 ```
 
-The board uses fixed logical coordinates (1600×1000 or 1000×1500) and is scaled with CSS,
-so positions are identical on a phone, a laptop and a TV. The cork, frame, papers and pins
-are drawn with CSS, SVG and canvas — no image assets.
-
+Everything on screen is drawn with CSS, SVG and canvas: no image assets.
 See [ROADMAP.md](ROADMAP.md).
 
 ## License

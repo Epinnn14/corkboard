@@ -1,20 +1,21 @@
 # Roadmap
 
 ## Next
-- [ ] **Multiple boards** with a board switcher (Home, Work, Trip…).
-- [ ] **Resize** handles for notes and cards.
-- [ ] **String / yarn** between pins to connect related notes (detective-board style).
-- [ ] Checklists on index cards (tap a line to tick it off).
-- [ ] Washi tape as an alternative to pins.
+- [ ] **Checklists**: tap a `☐` line on an index card to tick it.
+- [ ] **Due dates** on notes with a "this week" view across boards.
+- [ ] **Resize** handles for notes and stickers.
+- [ ] **Yarn** between pins to connect related notes (detective-board style).
+- [ ] Board search: find a note by text across every board.
+- [ ] Minimap for big workspaces.
 
 ## Later
 - [ ] Share a read-only board as a single self-contained HTML file.
-- [ ] Optional sync between devices (e.g. a JSON file in a cloud folder).
+- [ ] Optional sync between devices (a JSON file in a cloud folder).
 - [ ] PWA install + offline caching.
-- [ ] Themes: whiteboard, chalkboard, fridge door with magnets.
-- [ ] Accessibility: keyboard moving of notes (arrow keys) and screen-reader labels per note.
+- [ ] More surfaces (whiteboard, chalkboard, fridge door with magnets) and seasonal sticker packs.
+- [ ] Keyboard moving of notes (arrow keys) and richer screen-reader labels.
 
 ## Done
-- [x] Sticky notes, index cards, lined paper, polaroids with photos, four-pin cards
-- [x] Drag, edit, recolour, duplicate, remove with undo, z-order
-- [x] Landscape/portrait boards, IndexedDB autosave, PNG export, JSON import/export
+- [x] v1.1: endless workspace with any number of boards, pan/zoom, drag notes between boards,
+      templates, 12 colours + custom, stickers, washi tape, four surfaces, auto orientation
+- [x] v1.0: sticky notes, index cards, lined paper, polaroids, four-pin cards, undo, PNG/JSON export
