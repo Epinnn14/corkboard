@@ -115,7 +115,7 @@ describe('top bar', () => {
     const names = wrapper.findAll('.file-menu .menu-item .mi-title').map((t) => t.element.firstChild?.textContent?.trim());
     expect(names).toEqual([
       'New board', 'Import files', 'Word', 'PDF', 'Text', 'Markdown', 'Backup',
-      'Widget mode', 'Desktop wallpaper', 'Phone wallpaper',
+      'Widget mode', 'Desktop wallpaper', 'Phone wallpaper', 'Install app',
     ]);
     expect(wrapper.find('input[type=file][multiple]').attributes('accept')).toContain('.docx');
     wrapper.unmount();
@@ -167,6 +167,51 @@ describe('dates, agenda and widget', () => {
     expect(wrapper.find('.widget .time').text()).toMatch(/^\d{2}:\d{2}$/);
     expect(wrapper.findAll('.widget .mini .note').length).toBeGreaterThan(3);
     window.location.hash = '';
+    wrapper.unmount();
+  });
+});
+
+describe('install', () => {
+  it('#install opens the install sheet; the browser prompt becomes a one-click button', async () => {
+    window.location.hash = '#install';
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    const wrapper = mount(App, { attachTo: document.body });
+    expect(wrapper.find('.install').exists()).toBe(true);
+    expect(wrapper.find('[data-action=install-now]').exists()).toBe(false);
+    expect(wrapper.findAll('.inst-steps li').length).toBeGreaterThan(1);
+
+    let prompted = 0;
+    const evt = Object.assign(new Event('beforeinstallprompt'), {
+      prompt: async () => void prompted++,
+      userChoice: Promise.resolve({ outcome: 'accepted' }),
+    });
+    window.dispatchEvent(evt);
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-action=install-now]').trigger('click');
+    await new Promise((r) => setTimeout(r));
+    expect(prompted).toBe(1);
+    expect(wrapper.find('.inst-done').text()).toContain('Installed!');
+
+    await wrapper.find('.install .sheet-head button').trigger('click');
+    expect(wrapper.find('.install').exists()).toBe(false);
+    expect(window.location.hash).toBe('');
+    wrapper.unmount();
+  });
+
+  it('the + menu opens it too, with tabs for laptop, Android and iPhone', async () => {
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    const wrapper = mount(App, { attachTo: document.body });
+    await wrapper.find('.bar .solid.plus').trigger('click');
+    await wrapper.find('[data-action=install]').trigger('click');
+    const tabs = wrapper.findAll('.inst-tabs button');
+    expect(tabs.map((t) => t.text().split(' ·')[0].trim())).toEqual(['💻 Laptop / PC', '🤖 Android', '📱 iPhone / iPad']);
+    await tabs[2].trigger('click');
+    expect(wrapper.find('.inst-steps').text()).toContain('Add to Home Screen');
+    expect(wrapper.find('.inst-other code').text()).toMatch(/#install$/);
     wrapper.unmount();
   });
 });

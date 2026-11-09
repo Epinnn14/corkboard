@@ -17,11 +17,13 @@ import {
 import { autoOrientation } from './core/workspace';
 import type { Board } from './core/board';
 import { attentionCount, dueLabel, dueReminders, noteTitle, reminderKey } from './core/dates';
+import { isInstalled } from './core/install';
 import { showNotification } from './core/notify';
 import { composeWallpaper, type WallpaperKind } from './core/wallpaper';
 import { useNow } from './composables/now';
 import { useWorkspace } from './stores/workspace';
 import AgendaPanel from './components/AgendaPanel.vue';
+import InstallSheet from './components/InstallSheet.vue';
 import WidgetView from './components/WidgetView.vue';
 import Workspace from './components/Workspace.vue';
 
@@ -35,6 +37,7 @@ const paletteOpen = ref(false);
 const stickersOpen = ref(false);
 const sheetOpen = ref(false);
 const agendaOpen = ref(window.location.hash === '#agenda');
+const installOpen = ref(window.location.hash === '#install');
 const route = ref<'app' | 'widget'>(window.location.hash === '#widget' ? 'widget' : 'app');
 const now = useNow();
 const attention = computed(() => attentionCount(store.boards, now.value));
@@ -90,6 +93,7 @@ function revealNote(id: string) {
 function onHash() {
   route.value = window.location.hash === '#widget' ? 'widget' : 'app';
   if (window.location.hash === '#agenda') agendaOpen.value = true;
+  if (window.location.hash === '#install') installOpen.value = true;
 }
 
 let reminderTimer: ReturnType<typeof setInterval> | undefined;
@@ -116,10 +120,27 @@ window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   installPrompt.value = e as InstallPrompt;
 });
-async function install() {
-  fileOpen.value = false;
-  await installPrompt.value?.prompt();
+const installed = isInstalled();
+const justInstalled = ref(false);
+window.addEventListener('appinstalled', () => {
+  justInstalled.value = true;
   installPrompt.value = null;
+});
+function openInstall() {
+  fileOpen.value = false;
+  installOpen.value = true;
+}
+function closeInstall() {
+  installOpen.value = false;
+  if (window.location.hash === '#install') history.replaceState(null, '', window.location.pathname + window.location.search);
+}
+async function install() {
+  const p = installPrompt.value;
+  if (!p) return;
+  await p.prompt();
+  const choice = await (p as InstallPrompt & { userChoice?: Promise<{ outcome: string }> }).userChoice;
+  installPrompt.value = null;
+  if (choice?.outcome === 'accepted') justInstalled.value = true;
 }
 
 function openWidget() {
@@ -295,6 +316,7 @@ function onKey(e: KeyboardEvent) {
   else if (e.key === 'a' || e.key === 'A') agendaOpen.value = !agendaOpen.value;
   else if (e.key === 'Escape') {
     agendaOpen.value = false;
+    if (installOpen.value) closeInstall();
     store.select(null);
     boardsOpen.value = fileOpen.value = paletteOpen.value = stickersOpen.value = sheetOpen.value = false;
   }
@@ -397,9 +419,9 @@ onBeforeUnmount(() => {
             <span class="mi-ico" aria-hidden="true">📱</span>
             <span class="mi-title">Phone wallpaper<small>this board, room for the lock-screen clock</small></span>
           </button>
-          <button v-if="installPrompt" class="menu-item" role="menuitem" data-action="install" @click="install">
+          <button v-if="!installed" class="menu-item" role="menuitem" data-action="install" @click="openInstall">
             <span class="mi-ico" aria-hidden="true">⬇️</span>
-            <span class="mi-title">Install app<small>own window, start menu / home screen, works offline</small></span>
+            <span class="mi-title">Install app<small>laptop or phone: own icon, works offline</small></span>
           </button>
         </div>
       </div>
@@ -492,6 +514,15 @@ onBeforeUnmount(() => {
         </p>
       </section>
     </div>
+
+    <InstallSheet
+      v-if="installOpen"
+      :can-prompt="!!installPrompt"
+      :installed="installed"
+      :just-installed="justInstalled"
+      @install="install"
+      @close="closeInstall"
+    />
 
     <AgendaPanel v-if="agendaOpen" @close="agendaOpen = false" @reveal="revealNote" />
 

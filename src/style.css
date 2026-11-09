@@ -281,3 +281,27 @@ button { font: inherit; cursor: pointer; }
 @keyframes wiggle { 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
 @media (prefers-reduced-motion: reduce) { .ring, .ring-ico { animation: none; } }
 @media (max-width: 860px) { .agenda-label { display: none; } }
+
+/* install sheet */
+.install { width: min(560px, 100%); }
+.inst-lead { margin: 0 0 14px; color: rgba(43, 38, 32, 0.7); }
+.inst-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.inst-tabs button {
+  border: 1px solid rgba(43, 38, 32, 0.15);
+  background: #fff;
+  border-radius: 999px;
+  padding: 7px 13px;
+  color: var(--ink);
+}
+.inst-tabs button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.inst-tabs small { opacity: 0.7; }
+.inst-one { background: #fff27a; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 8px 18px rgba(120, 100, 0, 0.15); transform: rotate(-0.4deg); }
+.inst-one p { margin: 10px 0 0; font-size: 14px; }
+.inst-go { font-size: 18px; padding: 12px 22px; border-radius: 999px; }
+.inst-other { background: #f4efe6; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; }
+.inst-other p { margin: 0 0 6px; }
+.inst-other code { word-break: break-all; font-size: 13px; }
+.inst-steps { margin: 0; padding-left: 22px; line-height: 1.7; }
+.inst-note { color: rgba(43, 38, 32, 0.6); font-size: 13px; margin: 10px 0 0; }
+.inst-done { text-align: center; padding: 10px 0 6px; }
+.inst-big { font-size: 46px; }
