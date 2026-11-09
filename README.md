@@ -4,10 +4,34 @@
 polaroids, stickers and washi tape, plan your week, run a kanban, build a moodboard.
 No account, no server: everything stays on your device.
 
+<p align="center">
+  <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-laptop.svg" alt="Install on laptop" height="56"></a>
+  &nbsp;
+  <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-phone.svg" alt="Install on phone" height="56"></a>
+  <br>
+  <sub><a href="https://epinnn14.github.io/corkboard/">or just open it in the browser</a></sub>
+</p>
+
 ![A board with sticky notes, an index card, a polaroid and stickers](docs/board.jpg)
 
 Made for the way people actually plan: students with exams and group projects,
 office folks juggling tasks and meetings, and anyone who thinks better with paper on a wall.
+
+## Install
+
+Click **Install on laptop** or **Install on phone** above (or scan the code with your phone camera).
+corkboard opens with an install window ready for the device you're on:
+
+<img src="docs/install-qr.svg" width="150" align="right" alt="QR code to install corkboard on a phone">
+
+- **Windows / Mac / Chromebook (Chrome or Edge), Android:** one **Install now** button, then confirm once.
+  corkboard gets its own window and lands in the Start menu, taskbar, Dock or home screen.
+- **iPhone / iPad:** Apple doesn't let websites show an install button, so the window shows the two taps:
+  *Share → Add to Home Screen*.
+- **Firefox on a laptop** can't install web apps; it still runs fine in a tab.
+
+No app store, no account, about 1 MB, works offline. To remove it, uninstall it like any other app.
+For security, browsers always ask you to confirm; no website can install itself silently.
 
 ## Boards, as many as you want
 
@@ -65,8 +89,8 @@ New boards come blank or from a template:
 - **Reminders** pop up as a banner and a system notification while corkboard is open (a tab or the installed app).
   For reminders when it is closed, use **Add to calendar** in the date editor: an `.ics` file with an alarm
   (Windows Calendar, Outlook, Apple, Google) or a Google Calendar link.
-- **Install as an app**: Chrome/Edge on Windows, Android Chrome (*Add to Home screen*), iPhone Safari (*Share → Add to
-  Home Screen*). It works offline and gets its own icon, with shortcuts to *Widget* and *Agenda*.
+- **Install as an app** (see [Install](#install)): works offline and gets its own icon, with shortcuts to *Widget*
+  and *Agenda*.
 - **Widget mode** (`#widget`, in the **+** menu): a big date card with the clock, what's up next and a live mini
   board. Pin it as a small always-open window on your desktop, or open it from the home-screen shortcut on a phone.
 - **Wallpapers** (in the **+** menu): *Desktop wallpaper* (2560×1440) and *Phone wallpaper* (1170×2532, with the top
@@ -98,7 +122,7 @@ plus every note as searchable text) · plain text · Markdown (for Notion/Obsidi
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 63 tests
+npm test          # 67 tests
 npm run build     # static site in dist/ (relative paths, host it anywhere)
 ```
 
@@ -119,6 +143,7 @@ src/
 │   ├── convert.ts        text / markdown / csv → packed notes across boards, notes → txt / md
 │   ├── io.ts             file readers (pdf.js, mammoth) and writers (docx, jsPDF), loaded on demand
 │   ├── dates.ts          due dates, agenda groups, reminder timing, .ics and Google Calendar links
+│   ├── install.ts        device/browser detection and install steps
 │   ├── notify.ts         system notifications (through the service worker when installed)
 │   ├── wallpaper.ts      desktop and phone wallpaper layouts
 │   ├── texture.ts        cork, felt, linen and dot-grid surfaces painted on a canvas
@@ -131,6 +156,7 @@ src/
     ├── DueEditor.vue     date, reminder and add-to-calendar popover
     ├── AgendaPanel.vue   every dated note across boards
     ├── WidgetView.vue    the #widget screen
+    ├── InstallSheet.vue  the #install window: one-click install or the steps for this device
     └── PushPin.vue
 ```
 
