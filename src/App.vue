@@ -18,11 +18,22 @@ import { autoOrientation } from './core/workspace';
 import type { Board } from './core/board';
 import { attentionCount, dueLabel, dueReminders, noteTitle, reminderKey } from './core/dates';
 import { isInstalled } from './core/install';
+import {
+  DEFAULT_DESK,
+  type DeskConfig,
+  type DeskSnapshot,
+  decodeSnapshot,
+  deskHash,
+  deskWindowSize,
+  parseDeskHash,
+  sanitizeDesk,
+} from './core/desk';
 import { showNotification } from './core/notify';
 import { composeWallpaper, type WallpaperKind } from './core/wallpaper';
 import { useNow } from './composables/now';
 import { useWorkspace } from './stores/workspace';
 import AgendaPanel from './components/AgendaPanel.vue';
+import DeskSheet from './components/DeskSheet.vue';
 import InstallSheet from './components/InstallSheet.vue';
 import WidgetView from './components/WidgetView.vue';
 import Workspace from './components/Workspace.vue';
@@ -38,7 +49,9 @@ const stickersOpen = ref(false);
 const sheetOpen = ref(false);
 const agendaOpen = ref(window.location.hash === '#agenda');
 const installOpen = ref(window.location.hash === '#install');
-const route = ref<'app' | 'widget'>(window.location.hash === '#widget' ? 'widget' : 'app');
+const isWidget = () => window.location.hash.startsWith('#widget');
+const route = ref<'app' | 'widget'>(isWidget() ? 'widget' : 'app');
+const deskOpen = ref(false);
 const now = useNow();
 const attention = computed(() => attentionCount(store.boards, now.value));
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -91,7 +104,8 @@ function revealNote(id: string) {
 }
 
 function onHash() {
-  route.value = window.location.hash === '#widget' ? 'widget' : 'app';
+  route.value = isWidget() ? 'widget' : 'app';
+  readDesk();
   if (window.location.hash === '#agenda') agendaOpen.value = true;
   if (window.location.hash === '#install') installOpen.value = true;
 }
@@ -146,6 +160,65 @@ async function install() {
 function openWidget() {
   fileOpen.value = false;
   window.location.hash = 'widget';
+}
+
+// ------------------------------------------------------- desktop widget
+const DESK_KEY = 'corkboard:desk';
+function loadDesk(): DeskConfig {
+  try {
+    const raw = localStorage.getItem(DESK_KEY);
+    if (raw) return sanitizeDesk(JSON.parse(raw));
+    const oldBoard = localStorage.getItem('corkboard:widget-board'); // v1.3 kept only the board
+    return sanitizeDesk({ boardId: oldBoard });
+  } catch {
+    return DEFAULT_DESK;
+  }
+}
+function saveDesk(c: DeskConfig) {
+  try {
+    localStorage.setItem(DESK_KEY, JSON.stringify({ ...c, wall: false }));
+  } catch {
+    /* fine without it */
+  }
+}
+const deskCfg = ref<DeskConfig>(DEFAULT_DESK);
+const deskSnap = ref<DeskSnapshot | null>(null);
+const deskSnapPending = ref(false);
+let deskCustom = false;
+function readDesk() {
+  const { config, snap, custom } = parseDeskHash(window.location.hash, loadDesk());
+  deskCfg.value = config;
+  deskCustom = custom;
+  deskSnap.value = null;
+  deskSnapPending.value = !!snap;
+  if (snap) {
+    void decodeSnapshot(snap).then((s) => {
+      deskSnap.value = s;
+      deskSnapPending.value = false;
+    });
+  }
+}
+readDesk();
+function pickDeskBoard(id: string) {
+  deskCfg.value = { ...deskCfg.value, boardId: id };
+  saveDesk(deskCfg.value);
+  if (deskCustom) history.replaceState(null, '', deskHash(deskCfg.value));
+}
+function openDesk() {
+  fileOpen.value = false;
+  deskOpen.value = true;
+}
+function openDeskWindow(c: DeskConfig) {
+  saveDesk(c);
+  const { w, h } = deskWindowSize(c);
+  const left = Math.max(0, (window.screen?.availWidth ?? 1280) - w - 32);
+  const url = window.location.href.replace(/#.*$/, '') + deskHash(c);
+  const win = window.open(url, 'corkboard-widget', `popup,width=${w},height=${h},left=${left},top=48`);
+  if (!win) say('Your browser blocked the window. Allow pop-ups for corkboard and try again');
+  else deskOpen.value = false;
+}
+function leaveWidget() {
+  window.location.hash = '';
 }
 
 function viewportSize() {
@@ -318,7 +391,7 @@ function onKey(e: KeyboardEvent) {
     agendaOpen.value = false;
     if (installOpen.value) closeInstall();
     store.select(null);
-    boardsOpen.value = fileOpen.value = paletteOpen.value = stickersOpen.value = sheetOpen.value = false;
+    boardsOpen.value = fileOpen.value = paletteOpen.value = stickersOpen.value = sheetOpen.value = deskOpen.value = false;
   }
 }
 
@@ -343,7 +416,14 @@ onBeforeUnmount(() => {
 
 <template>
   <div v-if="route === 'widget'" class="app">
-    <WidgetView />
+    <WidgetView
+      v-if="!deskSnapPending"
+      :config="deskCfg"
+      :boards="deskSnap?.boards ?? store.boards"
+      :snapshot-at="deskSnap?.at ?? null"
+      @board="pickDeskBoard"
+      @open="leaveWidget"
+    />
     <div v-if="ringing" class="ring" role="alert">
       <span class="ring-ico" aria-hidden="true">⏰</span>
       <span class="ring-txt"><b>{{ ringing.title.replace('⏰ ', '') }}</b><small>{{ ringing.body }}</small></span>
@@ -407,6 +487,10 @@ onBeforeUnmount(() => {
             <span class="mi-title">{{ x.label }}<small>{{ x.hint }}</small></span>
           </button>
           <p class="menu-label">On your desk &amp; phone</p>
+          <button class="menu-item" role="menuitem" data-action="desk" @click="openDesk">
+            <span class="mi-ico" aria-hidden="true">📌</span>
+            <span class="mi-title">Add to desktop<small>widget or live wallpaper: pick what it shows</small></span>
+          </button>
           <button class="menu-item" role="menuitem" data-action="widget" @click="openWidget">
             <span class="mi-ico" aria-hidden="true">🗓️</span>
             <span class="mi-title">Widget mode<small>date, clock, what's next + a mini board</small></span>
@@ -514,6 +598,15 @@ onBeforeUnmount(() => {
         </p>
       </section>
     </div>
+
+    <DeskSheet
+      v-if="deskOpen"
+      :boards="store.boards"
+      :initial="loadDesk()"
+      @save="saveDesk"
+      @open="openDeskWindow"
+      @close="deskOpen = false"
+    />
 
     <InstallSheet
       v-if="installOpen"

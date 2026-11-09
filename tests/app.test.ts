@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../src/App.vue';
 import { useWorkspace } from '../src/stores/workspace';
 
@@ -115,7 +115,7 @@ describe('top bar', () => {
     const names = wrapper.findAll('.file-menu .menu-item .mi-title').map((t) => t.element.firstChild?.textContent?.trim());
     expect(names).toEqual([
       'New board', 'Import files', 'Word', 'PDF', 'Text', 'Markdown', 'Backup',
-      'Widget mode', 'Desktop wallpaper', 'Phone wallpaper', 'Install app',
+      'Add to desktop', 'Widget mode', 'Desktop wallpaper', 'Phone wallpaper', 'Install app',
     ]);
     expect(wrapper.find('input[type=file][multiple]').attributes('accept')).toContain('.docx');
     wrapper.unmount();
@@ -212,6 +212,99 @@ describe('install', () => {
     await tabs[2].trigger('click');
     expect(wrapper.find('.inst-steps').text()).toContain('Add to Home Screen');
     expect(wrapper.find('.inst-other code').text()).toMatch(/#install$/);
+    wrapper.unmount();
+  });
+});
+
+describe('add to desktop', () => {
+  function dated(text: string, hoursFromNow: number) {
+    const store = useWorkspace();
+    const d = new Date(Date.now() + hoursFromNow * 3600_000);
+    const p = (x: number) => String(x).padStart(2, '0');
+    const n = store.addNote('sticky', { text })!;
+    store.setDue(n.id, `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`, 0);
+    return n;
+  }
+
+  it('lets you pick what the widget shows, previews it and opens it in its own window', async () => {
+    localStorage.clear();
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    dated('Pay rent', 30);
+    const open = vi.spyOn(window, 'open').mockReturnValue({} as Window);
+    const wrapper = mount(App, { attachTo: document.body });
+    await wrapper.find('.bar .solid.plus').trigger('click');
+    await wrapper.find('[data-action=desk]').trigger('click');
+    const sheet = wrapper.find('.desk');
+    expect(sheet.findAll('.desk-part.on')).toHaveLength(4);
+    expect(sheet.find('.desk-preview .mini').exists()).toBe(true);
+
+    await sheet.find('[data-part=board]').trigger('click');
+    await sheet.find('[data-part=clock]').trigger('click');
+    expect(sheet.find('.desk-preview .mini').exists()).toBe(false);
+    expect(sheet.find('.desk-preview .time').exists()).toBe(false);
+    expect(sheet.find('.desk-preview').text()).toContain('Coming up');
+    await sheet.findAll('.desk-theme')[2].trigger('click');
+    expect(sheet.find('.desk-preview .widget.th-dark').exists()).toBe(true);
+
+    await sheet.find('[data-action=desk-open]').trigger('click');
+    expect(open).toHaveBeenCalledTimes(1);
+    const [url, name, features] = open.mock.calls[0] as [string, string, string];
+    expect(url).toMatch(/#widget\?show=today%2Cweek&theme=dark$/);
+    expect(name).toBe('corkboard-widget');
+    expect(features).toMatch(/^popup,width=380/);
+    expect(JSON.parse(localStorage.getItem('corkboard:desk')!)).toMatchObject({ parts: ['today', 'week'], theme: 'dark' });
+    expect(wrapper.find('.desk').exists()).toBe(false);
+    open.mockRestore();
+    wrapper.unmount();
+  });
+
+  it('the wallpaper link carries a snapshot that a fresh browser (Lively) can show', async () => {
+    localStorage.clear();
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    dated('Hand in thesis', 1);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const wrapper = mount(App, { attachTo: document.body });
+    await wrapper.find('.bar .solid.plus').trigger('click');
+    await wrapper.find('[data-action=desk]').trigger('click');
+    await wrapper.find('[data-action=desk-wall]').trigger('click');
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalled());
+    const link = writeText.mock.calls[0][0] as string;
+    expect(link).toMatch(/#widget\?show=clock%2Ctoday%2Cweek%2Cboard&theme=sticky&board=.+&wall=1&snap=z/);
+    wrapper.unmount();
+
+    // somewhere else: empty storage, only the link
+    setActivePinia(createPinia());
+    const fresh = useWorkspace();
+    fresh.replace({ version: 2, boards: [], camera: null });
+    window.location.hash = link.slice(link.indexOf('#'));
+    const wall = mount(App, { attachTo: document.body });
+    await vi.waitFor(() => expect(wall.find('.widget.wall').exists()).toBe(true));
+    expect(wall.find('.widget').text()).toContain('Hand in thesis');
+    expect(wall.find('.widget .snap').text()).toMatch(/^From corkboard, /);
+    expect(wall.find('.widget .open').exists()).toBe(false);
+    window.location.hash = '';
+    wall.unmount();
+  });
+
+  it('a widget link shows only the chosen parts', async () => {
+    window.location.hash = '#widget?show=today&theme=paper';
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    dated('Call mum', 0); // due now: always in today's list (today or overdue)
+    const wrapper = mount(App, { attachTo: document.body });
+    const w = wrapper.find('.widget');
+    expect(w.classes()).toEqual(expect.arrayContaining(['th-paper', 'solo']));
+    expect(w.find('.time').exists()).toBe(false);
+    expect(w.find('.mini').exists()).toBe(false);
+    expect(w.text()).toContain('Call mum');
+    expect(w.text()).not.toContain('Coming up');
+    window.location.hash = '';
     wrapper.unmount();
   });
 });

@@ -305,3 +305,53 @@ button { font: inherit; cursor: pointer; }
 .inst-note { color: rgba(43, 38, 32, 0.6); font-size: 13px; margin: 10px 0 0; }
 .inst-done { text-align: center; padding: 10px 0 6px; }
 .inst-big { font-size: 46px; }
+
+/* add to desktop sheet */
+.desk { width: min(900px, 100%); }
+.desk-grid { display: grid; grid-template-columns: minmax(0, 330px) 1fr; gap: 18px; }
+.desk-label { margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(43, 38, 32, 0.55); }
+.desk-parts { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.desk-part {
+  display: grid;
+  grid-template-columns: 30px 1fr 22px;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  border: 1px solid rgba(43, 38, 32, 0.14);
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px 10px;
+  color: var(--ink);
+}
+.desk-part.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: #fffbe0; }
+.dp-ico { font-size: 20px; text-align: center; }
+.dp-txt { display: flex; flex-direction: column; }
+.dp-txt small { color: rgba(43, 38, 32, 0.55); font-size: 12px; }
+.dp-check { width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid rgba(43, 38, 32, 0.3); display: grid; place-items: center; font-size: 13px; font-weight: 800; }
+.desk-part.on .dp-check { background: var(--ink); border-color: var(--ink); color: #fff27a; }
+.desk-board { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 14px; }
+.desk-board span { color: rgba(43, 38, 32, 0.6); }
+.desk-board select { flex: 1; font: inherit; border: 1px solid rgba(43, 38, 32, 0.2); border-radius: 8px; padding: 6px 8px; background: #fff; color: var(--ink); }
+.desk-themes { display: flex; gap: 6px; }
+.desk-theme { flex: 1; border: 1px solid rgba(43, 38, 32, 0.15); border-radius: 10px; padding: 8px 6px; font-weight: 600; color: var(--ink); }
+.dt-sticky { background: #fff27a; }
+.dt-paper { background: #fffdf8; }
+.dt-dark { background: #1e1b18; color: #f6f1e7; }
+.desk-theme.on { box-shadow: 0 0 0 2px #fffdf8, 0 0 0 4px var(--ink); }
+.desk-preview { height: 340px; border-radius: 14px; overflow: hidden; position: relative; background: repeating-linear-gradient(135deg, #f1ece3 0 10px, #ebe5da 10px 20px); }
+.desk-window { position: absolute; left: 50%; top: 50%; transform-origin: 50% 50%; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12), 0 18px 40px rgba(0, 0, 0, 0.25); }
+.desk-ways { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.desk-way { border: 1px solid rgba(43, 38, 32, 0.12); background: #fff; border-radius: 16px; padding: 14px 16px; }
+.desk-way h3 { margin: 0 0 4px; font-size: 16px; }
+.desk-way h3 small { font-weight: 500; color: rgba(43, 38, 32, 0.55); }
+.desk-way > p { margin: 0 0 10px; font-size: 14px; color: rgba(43, 38, 32, 0.75); }
+.desk-way .solid { border-radius: 999px; padding: 8px 16px; }
+.desk-try { margin-left: 10px; font-size: 14px; color: var(--ink); }
+.desk-link { display: block; width: 100%; margin-top: 8px; font: 12px ui-monospace, monospace; padding: 6px 8px; border: 1px solid rgba(43, 38, 32, 0.2); border-radius: 8px; }
+.desk-tip { margin: 10px 0 0; font-size: 12.5px; color: rgba(43, 38, 32, 0.6); line-height: 1.5; }
+ol.desk-tip { padding-left: 18px; }
+.desk-tip code { font-size: 11.5px; background: #f4efe6; padding: 1px 4px; border-radius: 4px; }
+@media (max-width: 760px) {
+  .desk-grid, .desk-ways { grid-template-columns: 1fr; }
+  .desk-preview { height: 300px; }
+}
