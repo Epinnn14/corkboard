@@ -1,9 +1,21 @@
 <script setup lang="ts">
-import { toPng } from 'html-to-image';
+import { toJpeg, toPng } from 'html-to-image';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { KIND_LABEL, type NoteKind, STICKERS, STICKY_COLORS } from './core/board';
 import { TEMPLATES, type TemplateId } from './core/templates';
-import { autoOrientation, parseWorkspace } from './core/workspace';
+import {
+  boardsToDocx,
+  boardsToMarkdown,
+  boardsToPdf,
+  boardsToText,
+  EXPORTS,
+  type ExportFormat,
+  IMPORT_ACCEPT,
+  readImport,
+  textBlob,
+} from './core/io';
+import { autoOrientation } from './core/workspace';
+import type { Board } from './core/board';
 import { useWorkspace } from './stores/workspace';
 import Workspace from './components/Workspace.vue';
 
@@ -73,47 +85,104 @@ function download(href: string, name: string) {
   a.click();
 }
 
+const pngOptions = {
+  cacheBust: true,
+  // the board sits somewhere on the endless canvas; draw it at the origin
+  style: { position: 'static', margin: '0' },
+  filter: (node: Node) => !(node instanceof HTMLElement && node.classList.contains('tab')),
+};
+
+async function renderBoard(b: Board, pixelRatio = 1, format: 'png' | 'jpeg' = 'png'): Promise<string | null> {
+  const el = document.querySelector<HTMLElement>(`[data-board-id="${b.id}"]`);
+  if (!el) return null;
+  try {
+    return format === 'png'
+      ? await toPng(el, { ...pngOptions, pixelRatio })
+      : await toJpeg(el, { ...pngOptions, pixelRatio, quality: 0.82, backgroundColor: '#c88f4d' });
+  } catch {
+    return null;
+  }
+}
+
 async function saveImage() {
   const board = store.active;
-  const el = board && document.querySelector<HTMLElement>(`[data-board-id="${board.id}"]`);
-  if (!board || !el) return say('Add a board first');
+  if (!board) return say('Add a board first');
   store.select(null);
   (document.activeElement as HTMLElement | null)?.blur?.();
   await nextTick();
-  try {
-    const url = await toPng(el, {
-      pixelRatio: 1.5,
-      cacheBust: true,
-      filter: (node) => !(node instanceof HTMLElement && node.classList.contains('tab')),
-    });
-    download(url, `${slug(board.title)}.png`);
-  } catch {
-    say('Could not render the image in this browser');
-  }
+  const url = await renderBoard(board, 1.5);
+  if (url) download(url, `${slug(board.title)}.png`);
+  else say('Could not render the image in this browser');
 }
 
-function exportJson() {
-  const blob = new Blob([JSON.stringify(store.ws, null, 2)], { type: 'application/json' });
+function downloadBlob(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
-  download(url, 'corkboard-workspace.json');
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  download(url, name);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-async function importJson(e: Event) {
-  const input = e.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file) return;
+const busy = ref(false);
+
+async function exportAs(format: ExportFormat) {
+  fileOpen.value = false;
+  const boards = store.boards;
+  if (!boards.length && format !== 'json') return say('Nothing to export yet');
+  busy.value = true;
+  store.select(null);
+  await nextTick();
   try {
-    const r = parseWorkspace(JSON.parse(await file.text()));
-    if (!r.ok) return say(r.error);
-    const placed = store.importBoards(r.workspace.boards);
-    say(`Added ${placed.length} board${placed.length === 1 ? '' : 's'} from ${file.name}`);
-    await nextTick();
-    space.value?.fitAll();
-  } catch {
-    say('That file is not valid JSON');
+    if (format === 'json') downloadBlob(textBlob(JSON.stringify(store.ws, null, 2), 'application/json'), 'corkboard.json');
+    if (format === 'txt') downloadBlob(textBlob(boardsToText(boards)), 'corkboard.txt');
+    if (format === 'md') downloadBlob(textBlob(boardsToMarkdown(boards), 'text/markdown'), 'corkboard.md');
+    if (format === 'docx') {
+      say('Preparing the Word file…');
+      downloadBlob(await boardsToDocx(boards), 'corkboard.docx');
+    }
+    if (format === 'pdf') {
+      say(`Drawing ${boards.length} board${boards.length === 1 ? '' : 's'} for the PDF…`);
+      downloadBlob(await boardsToPdf(boards, (b) => renderBoard(b, 1, 'jpeg')), 'corkboard.pdf');
+    }
+    say(`Exported ${boards.length} board${boards.length === 1 ? '' : 's'} as ${format.toUpperCase()}`);
+  } catch (e) {
+    say(`Export failed: ${(e as Error).message || 'unknown error'}`);
+  } finally {
+    busy.value = false;
   }
+}
+
+async function importFiles(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const files = [...(input.files ?? [])];
+  input.value = '';
+  if (!files.length) return;
+  busy.value = true;
+  say(files.length === 1 ? `Reading ${files[0].name}…` : `Reading ${files.length} files…`);
+  const orientation = autoOrientation(viewportSize());
+  const added: Board[] = [];
+  let photos = 0;
+  const errors: string[] = [];
+  for (const file of files) {
+    const r = await readImport(file, orientation, store.boards);
+    if (r.type === 'error') errors.push(r.message);
+    else if (r.type === 'image') {
+      if (!store.boards.length) store.addBoard(orientation);
+      const note = store.addNote('polaroid', { text: r.name.slice(0, 60) });
+      if (note) store.updateNote(note.id, { image: r.dataUrl });
+      photos++;
+    } else {
+      const boards = r.type === 'workspace' ? r.workspace.boards : r.boards;
+      added.push(...store.importBoards(boards));
+    }
+  }
+  busy.value = false;
+  const parts = [
+    added.length ? `${added.length} board${added.length === 1 ? '' : 's'}` : '',
+    photos ? `${photos} photo${photos === 1 ? '' : 's'}` : '',
+  ].filter(Boolean);
+  say([parts.length ? `Added ${parts.join(' and ')}` : '', ...errors].filter(Boolean).join(' · '));
+  await nextTick();
+  if (added[0]) space.value?.focusBoard(added[0].id);
+  else if (photos && store.active && !space.value?.isVisible(store.active.id)) space.value?.focusBoard(store.active.id);
 }
 
 function editing() {
@@ -198,17 +267,27 @@ onBeforeUnmount(() => {
           +
         </button>
         <div v-if="fileOpen" class="menu right" role="menu">
+          <p class="menu-label">Import</p>
           <button class="menu-item" role="menuitem" @click="fileOpen = false; importInput?.click()">
             <span class="mi-ico" aria-hidden="true">📥</span>
-            <span class="mi-title">Import<small>add boards from a .json file</small></span>
+            <span class="mi-title">Import files<small>txt · md · csv · pdf · docx · images · json</small></span>
           </button>
-          <button class="menu-item" role="menuitem" @click="fileOpen = false; exportJson()">
-            <span class="mi-ico" aria-hidden="true">📤</span>
-            <span class="mi-title">Export<small>all boards as one .json file</small></span>
+          <p class="menu-label">Export all boards as</p>
+          <button
+            v-for="x in EXPORTS"
+            :key="x.id"
+            class="menu-item"
+            role="menuitem"
+            :disabled="busy"
+            :data-export="x.id"
+            @click="exportAs(x.id)"
+          >
+            <span class="mi-ico" aria-hidden="true">{{ x.icon }}</span>
+            <span class="mi-title">{{ x.label }}<small>{{ x.hint }}</small></span>
           </button>
         </div>
       </div>
-      <input ref="importInput" type="file" accept="application/json,.json" hidden @change="importJson" />
+      <input ref="importInput" type="file" :accept="IMPORT_ACCEPT" multiple hidden @change="importFiles" />
     </header>
 
     <Workspace ref="space">

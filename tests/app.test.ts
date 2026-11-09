@@ -112,8 +112,12 @@ describe('top bar', () => {
     expect(wrapper.find('.file-menu .menu').exists()).toBe(false);
     await wrapper.find('.file-menu .icon').trigger('click');
     const items = wrapper.findAll('.file-menu .menu-item').map((i) => i.find('.mi-title').text());
-    expect(items[0]).toMatch(/^Import/);
-    expect(items[1]).toMatch(/^Export/);
+    expect(items[0]).toMatch(/^Import files/);
+    const names = wrapper.findAll('.file-menu .menu-item .mi-title').map((t) => t.element.firstChild?.textContent?.trim());
+    expect(names.slice(1)).toEqual([
+      'Word', 'PDF', 'Text', 'Markdown', 'Backup',
+    ]);
+    expect(wrapper.find('input[type=file][multiple]').attributes('accept')).toContain('.docx');
     wrapper.unmount();
   });
 });
