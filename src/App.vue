@@ -16,7 +16,13 @@ import {
 } from './core/io';
 import { autoOrientation } from './core/workspace';
 import type { Board } from './core/board';
+import { attentionCount, dueLabel, dueReminders, noteTitle, reminderKey } from './core/dates';
+import { showNotification } from './core/notify';
+import { composeWallpaper, type WallpaperKind } from './core/wallpaper';
+import { useNow } from './composables/now';
 import { useWorkspace } from './stores/workspace';
+import AgendaPanel from './components/AgendaPanel.vue';
+import WidgetView from './components/WidgetView.vue';
 import Workspace from './components/Workspace.vue';
 
 const store = useWorkspace();
@@ -28,6 +34,10 @@ const fileOpen = ref(false);
 const paletteOpen = ref(false);
 const stickersOpen = ref(false);
 const sheetOpen = ref(false);
+const agendaOpen = ref(window.location.hash === '#agenda');
+const route = ref<'app' | 'widget'>(window.location.hash === '#widget' ? 'widget' : 'app');
+const now = useNow();
+const attention = computed(() => attentionCount(store.boards, now.value));
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 const kinds: { kind: NoteKind; icon: string }[] = [
@@ -50,6 +60,72 @@ watch(
   () => store.undo,
   (u) => u && say(store.undoLabel),
 );
+
+// ---------------------------------------------------------------- reminders
+interface Ring {
+  noteId: string;
+  title: string;
+  body: string;
+}
+const ringing = ref<Ring | null>(null);
+
+async function checkReminders() {
+  for (const { note, board } of dueReminders(store.boards, new Date())) {
+    const title = `⏰ ${noteTitle(note)}`;
+    const body = `${dueLabel(note.due!, new Date())} · ${board.title}`;
+    store.markNotified(note.id, reminderKey(note));
+    ringing.value = { noteId: note.id, title, body };
+    await showNotification(title, body, note.id);
+  }
+}
+
+function revealNote(id: string) {
+  ringing.value = null;
+  agendaOpen.value = false;
+  if (route.value === 'widget') window.location.hash = '';
+  const boardId = store.reveal(id);
+  if (boardId) nextTick(() => space.value?.focusBoard(boardId));
+}
+
+function onHash() {
+  route.value = window.location.hash === '#widget' ? 'widget' : 'app';
+  if (window.location.hash === '#agenda') agendaOpen.value = true;
+}
+
+let reminderTimer: ReturnType<typeof setInterval> | undefined;
+onMounted(() => {
+  void checkReminders();
+  reminderTimer = setInterval(() => void checkReminders(), 15_000);
+  document.addEventListener('visibilitychange', checkReminders);
+  window.addEventListener('hashchange', onHash);
+  // a click on a notification (handled by the service worker) asks us to show that note
+  navigator.serviceWorker?.addEventListener?.('message', (e: MessageEvent) => {
+    if (e.data?.type === 'reveal-note') revealNote(e.data.noteId);
+  });
+});
+onBeforeUnmount(() => {
+  clearInterval(reminderTimer);
+  document.removeEventListener('visibilitychange', checkReminders);
+  window.removeEventListener('hashchange', onHash);
+});
+
+// ------------------------------------------------------------ install (PWA)
+type InstallPrompt = Event & { prompt: () => Promise<void> };
+const installPrompt = ref<InstallPrompt | null>(null);
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installPrompt.value = e as InstallPrompt;
+});
+async function install() {
+  fileOpen.value = false;
+  await installPrompt.value?.prompt();
+  installPrompt.value = null;
+}
+
+function openWidget() {
+  fileOpen.value = false;
+  window.location.hash = 'widget';
+}
 
 function viewportSize() {
   return space.value?.size ?? { w: window.innerWidth, h: window.innerHeight };
@@ -122,6 +198,18 @@ function downloadBlob(blob: Blob, name: string) {
 }
 
 const busy = ref(false);
+
+async function saveWallpaper(kind: WallpaperKind) {
+  fileOpen.value = false;
+  const board = store.active;
+  if (!board) return say('Add a board first');
+  store.select(null);
+  await nextTick();
+  const img = await renderBoard(board, 2);
+  if (!img) return say('Could not render the board in this browser');
+  download(await composeWallpaper(img, kind), `${slug(board.title)}-${kind}-wallpaper.png`);
+  say(kind === 'phone' ? 'Phone wallpaper saved. Set it from your Photos/Gallery app' : 'Desktop wallpaper saved. Right-click it → Set as desktop background');
+}
 
 async function exportAs(format: ExportFormat) {
   fileOpen.value = false;
@@ -197,14 +285,16 @@ function onKey(e: KeyboardEvent) {
     toast.value = '';
     return;
   }
-  if (editing() || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (editing() || e.ctrlKey || e.metaKey || e.altKey || route.value === 'widget') return;
   if ((e.key === 'Delete' || e.key === 'Backspace') && store.selectedId) store.removeNote(store.selectedId);
   else if (e.key === 'n' || e.key === 'N') addNote('sticky');
   else if (e.key === 'b' || e.key === 'B') sheetOpen.value = true;
   else if (e.key === '0') space.value?.fitAll();
   else if (e.key === '+' || e.key === '=') space.value?.zoomBy(1.2);
   else if (e.key === '-') space.value?.zoomBy(1 / 1.2);
+  else if (e.key === 'a' || e.key === 'A') agendaOpen.value = !agendaOpen.value;
   else if (e.key === 'Escape') {
+    agendaOpen.value = false;
     store.select(null);
     boardsOpen.value = fileOpen.value = paletteOpen.value = stickersOpen.value = sheetOpen.value = false;
   }
@@ -230,7 +320,16 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="app">
+  <div v-if="route === 'widget'" class="app">
+    <WidgetView />
+    <div v-if="ringing" class="ring" role="alert">
+      <span class="ring-ico" aria-hidden="true">⏰</span>
+      <span class="ring-txt"><b>{{ ringing.title.replace('⏰ ', '') }}</b><small>{{ ringing.body }}</small></span>
+      <button @click="revealNote(ringing.noteId)">Show</button>
+      <button class="ghosty" @click="ringing = null">OK</button>
+    </div>
+  </div>
+  <div v-else class="app">
     <header class="bar">
       <div class="brand" aria-label="corkboard"><span class="brand-pin" aria-hidden="true" />corkboard</div>
       <div class="menu-wrap">
@@ -285,9 +384,35 @@ onBeforeUnmount(() => {
             <span class="mi-ico" aria-hidden="true">{{ x.icon }}</span>
             <span class="mi-title">{{ x.label }}<small>{{ x.hint }}</small></span>
           </button>
+          <p class="menu-label">On your desk &amp; phone</p>
+          <button class="menu-item" role="menuitem" data-action="widget" @click="openWidget">
+            <span class="mi-ico" aria-hidden="true">🗓️</span>
+            <span class="mi-title">Widget mode<small>date, clock, what's next + a mini board</small></span>
+          </button>
+          <button class="menu-item" role="menuitem" data-action="wall-desktop" :disabled="busy" @click="saveWallpaper('desktop')">
+            <span class="mi-ico" aria-hidden="true">🖥️</span>
+            <span class="mi-title">Desktop wallpaper<small>this board, 2560 × 1440</small></span>
+          </button>
+          <button class="menu-item" role="menuitem" data-action="wall-phone" :disabled="busy" @click="saveWallpaper('phone')">
+            <span class="mi-ico" aria-hidden="true">📱</span>
+            <span class="mi-title">Phone wallpaper<small>this board, room for the lock-screen clock</small></span>
+          </button>
+          <button v-if="installPrompt" class="menu-item" role="menuitem" data-action="install" @click="install">
+            <span class="mi-ico" aria-hidden="true">⬇️</span>
+            <span class="mi-title">Install app<small>own window, start menu / home screen, works offline</small></span>
+          </button>
         </div>
       </div>
       <div class="spacer" />
+      <button
+        class="ghost agenda-btn"
+        :class="{ on: agendaOpen }"
+        title="Agenda (A)"
+        :aria-label="`Agenda${attention ? `, ${attention} need attention` : ''}`"
+        @click="agendaOpen = !agendaOpen"
+      >
+        📅<span class="agenda-label">Agenda</span><b v-if="attention" class="badge">{{ attention }}</b>
+      </button>
       <button class="ghost" title="Save the current board as a PNG image" @click="saveImage">Save</button>
       <input ref="importInput" type="file" :accept="IMPORT_ACCEPT" multiple hidden @change="importFiles" />
     </header>
@@ -366,6 +491,15 @@ onBeforeUnmount(() => {
           screens like phones get portrait boards.
         </p>
       </section>
+    </div>
+
+    <AgendaPanel v-if="agendaOpen" @close="agendaOpen = false" @reveal="revealNote" />
+
+    <div v-if="ringing" class="ring" role="alert">
+      <span class="ring-ico" aria-hidden="true">⏰</span>
+      <span class="ring-txt"><b>{{ ringing.title.replace('⏰ ', '') }}</b><small>{{ ringing.body }}</small></span>
+      <button @click="revealNote(ringing.noteId)">Show</button>
+      <button class="ghosty" @click="ringing = null">OK</button>
     </div>
 
     <div v-if="toast" class="toast" role="status">

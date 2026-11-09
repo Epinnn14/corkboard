@@ -109,12 +109,64 @@ describe('top bar', () => {
     const wrapper = mount(App, { attachTo: document.body });
     expect(wrapper.findAll('.bar .solid.plus')).toHaveLength(1);
     expect(wrapper.text()).not.toContain('+ Board');
-    expect(wrapper.findAll('.bar > button.ghost').map((b) => b.text())).toEqual(['Save']);
+    expect(wrapper.findAll('.bar > button.ghost').map((b) => b.text())).toEqual(['📅Agenda', 'Save']);
     expect(wrapper.find('.file-menu .menu').exists()).toBe(false);
     await wrapper.find('.bar .solid.plus').trigger('click');
     const names = wrapper.findAll('.file-menu .menu-item .mi-title').map((t) => t.element.firstChild?.textContent?.trim());
-    expect(names).toEqual(['New board', 'Import files', 'Word', 'PDF', 'Text', 'Markdown', 'Backup']);
+    expect(names).toEqual([
+      'New board', 'Import files', 'Word', 'PDF', 'Text', 'Markdown', 'Backup',
+      'Widget mode', 'Desktop wallpaper', 'Phone wallpaper',
+    ]);
     expect(wrapper.find('input[type=file][multiple]').attributes('accept')).toContain('.docx');
+    wrapper.unmount();
+  });
+});
+
+describe('dates, agenda and widget', () => {
+  it('a note gets a date from the 📅 tool, shows a chip, and appears in the agenda', async () => {
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    const wrapper = mount(App, { attachTo: document.body });
+    await wrapper.find('nav.dock > button.add').trigger('click');
+    await wrapper.find('.note .note-tools textarea, .note textarea').setValue('Hand in essay');
+    const cal = wrapper.findAll('.note-tools .tool').find((b) => b.text() === '📅')!;
+    await cal.trigger('click');
+    expect(wrapper.find('.due-editor').exists()).toBe(true);
+    await wrapper.find('.due-editor .quick button').trigger('click');
+    const note = store.active!.notes[0];
+    expect(note.due).toMatch(/^\d{4}-\d{2}-\d{2}T18:00$|T18:00$/);
+    expect(note.remind).toBe(0);
+    expect(wrapper.find('.due-chip').exists()).toBe(true);
+    await wrapper.find('.due-editor select').setValue('60');
+    expect(store.active!.notes[0].remind).toBe(60);
+    await wrapper.find('.due-chip').trigger('click');
+    expect(store.active!.notes[0].done).toBe(true);
+    expect(wrapper.find('.due-chip.done').exists()).toBe(true);
+
+    await wrapper.find('.agenda-btn').trigger('click');
+    expect(wrapper.find('.agenda').text()).toContain('Hand in essay');
+    await wrapper.find('.due-editor .clear').trigger('click');
+    expect(store.active!.notes[0].due).toBeUndefined();
+    expect(wrapper.find('.agenda').text()).toContain('Nothing scheduled yet');
+    wrapper.unmount();
+  });
+
+  it('#widget shows the date, clock, up next and a mini board', async () => {
+    window.location.hash = '#widget';
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    const b = store.addBoard('landscape', 'kanban');
+    const n = store.addNote('sticky', { boardId: b.id, text: 'Demo day' })!;
+    const d = new Date(Date.now() + 2 * 3600_000);
+    store.setDue(n.id, `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:00`, 0);
+    const wrapper = mount(App, { attachTo: document.body });
+    expect(wrapper.find('.widget').exists()).toBe(true);
+    expect(wrapper.find('.bar').exists()).toBe(false);
+    expect(wrapper.find('.widget .next').text()).toContain('Demo day');
+    expect(wrapper.find('.widget .time').text()).toMatch(/^\d{2}:\d{2}$/);
+    expect(wrapper.findAll('.widget .mini .note').length).toBeGreaterThan(3);
+    window.location.hash = '';
     wrapper.unmount();
   });
 });
