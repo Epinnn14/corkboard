@@ -54,12 +54,12 @@ New boards come blank or from a template:
 | Pan / zoom | drag empty space · scroll wheel or pinch · `+` `−` · `0` shows everything |
 | Change a note | select it: colour, tape/pin, duplicate, remove |
 | Undo | the toast's **Undo**, or `Ctrl/⌘ + Z` (notes, cleared boards and deleted boards) |
-| Keys | `N` new sticky · `B` new blank board · `Delete` remove · `Esc` deselect |
-| Keep / share | **Save** downloads the current board as a PNG · the **+** menu imports and exports files (below) |
+| Keys | `N` new sticky · `B` new board · `Delete` remove · `Esc` deselect |
+| Keep / share | **Save** downloads the current board as a PNG · the **+** menu has New board, Import and Export (below) |
 
 ## Import & export
 
-The **+** menu (top right) turns files into boards and boards into files.
+The **+** menu (top left, next to *Boards*) adds boards, turns files into boards and boards into files.
 
 **Import** (pick several files at once):
 

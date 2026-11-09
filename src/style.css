@@ -73,6 +73,9 @@ button { font: inherit; cursor: pointer; }
 .menu-item:disabled { opacity: 0.5; cursor: progress; }
 .mi-ico { font-size: 18px; width: 24px; text-align: center; flex: none; }
 .mi-title small { display: block; font-size: 12.5px; color: rgba(43, 38, 32, 0.55); white-space: normal; }
+.bar .solid.plus { width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 50%; }
+.plus-sign { font-size: 24px; line-height: 1; margin-top: -2px; transition: transform 0.15s; }
+.solid.plus[aria-expanded='true'] .plus-sign { transform: rotate(45deg); }
 .bar .ghost.icon { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; font-size: 20px; line-height: 1; }
 .menu-empty { margin: 8px 10px; color: rgba(43, 38, 32, 0.6); }
 

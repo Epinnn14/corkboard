@@ -31,7 +31,7 @@ export function welcomeWorkspace(orientation: Orientation = 'landscape', rnd: ()
   add('index', { x: 700, y: 170 }, 'TO DO\n– buy milk\n– call the plumber\n– finish slides', { tape: 'mint-dots' });
   add('sticky', { x: 1180, y: 230 }, 'Drag me around, even onto another board', { color: '#ffb3c7' });
   add('lined', { x: 260, y: 640 }, 'Ideas\n\nweekend trip?\nnew bookshelf\nlearn Vue', { tape: 'pink-stripes' });
-  add('card', { x: 760, y: 560 }, 'Need more room? “+ Board” adds another board, or a ready-made planner.\nDrag empty space to pan, scroll or pinch to zoom.');
+  add('card', { x: 760, y: 560 }, 'Need more room? The + button adds another board, or a ready-made planner.\nDrag empty space to pan, scroll or pinch to zoom.');
   add('polaroid', { x: 1300, y: 690 }, 'add a photo →', { tape: 'lilac-check' });
   add('sticky', { x: 1040, y: 790 }, 'Everything is saved in this browser', { color: '#a8dcff' });
   add('sticker', { x: 1470, y: 110 }, '🔥');

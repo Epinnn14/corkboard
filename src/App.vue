@@ -200,7 +200,7 @@ function onKey(e: KeyboardEvent) {
   if (editing() || e.ctrlKey || e.metaKey || e.altKey) return;
   if ((e.key === 'Delete' || e.key === 'Backspace') && store.selectedId) store.removeNote(store.selectedId);
   else if (e.key === 'n' || e.key === 'N') addNote('sticky');
-  else if (e.key === 'b' || e.key === 'B') newBoard();
+  else if (e.key === 'b' || e.key === 'B') sheetOpen.value = true;
   else if (e.key === '0') space.value?.fitAll();
   else if (e.key === '+' || e.key === '=') space.value?.zoomBy(1.2);
   else if (e.key === '-') space.value?.zoomBy(1 / 1.2);
@@ -253,22 +253,22 @@ onBeforeUnmount(() => {
           <p v-if="!store.boards.length" class="menu-empty">No boards yet</p>
         </div>
       </div>
-      <button class="solid" title="New board" @click="sheetOpen = true">+ Board</button>
-      <div class="spacer" />
-      <button class="ghost" title="Save the current board as a PNG image" @click="saveImage">Save</button>
       <div class="menu-wrap file-menu">
         <button
-          class="ghost icon"
+          class="solid plus"
           :aria-expanded="fileOpen"
-          aria-label="More: import or export"
-          title="Import or export"
+          aria-label="Add: new board, import or export"
+          title="New board, import, export"
           @click="fileOpen = !fileOpen"
         >
-          +
+          <span class="plus-sign" aria-hidden="true">+</span>
         </button>
-        <div v-if="fileOpen" class="menu right" role="menu">
-          <p class="menu-label">Import</p>
-          <button class="menu-item" role="menuitem" @click="fileOpen = false; importInput?.click()">
+        <div v-if="fileOpen" class="menu" role="menu">
+          <button class="menu-item" role="menuitem" data-action="new-board" @click="fileOpen = false; sheetOpen = true">
+            <span class="mi-ico" aria-hidden="true">🪵</span>
+            <span class="mi-title">New board<small>blank or a template · B</small></span>
+          </button>
+          <button class="menu-item" role="menuitem" data-action="import" @click="fileOpen = false; importInput?.click()">
             <span class="mi-ico" aria-hidden="true">📥</span>
             <span class="mi-title">Import files<small>txt · md · csv · pdf · docx · images · json</small></span>
           </button>
@@ -287,6 +287,8 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </div>
+      <div class="spacer" />
+      <button class="ghost" title="Save the current board as a PNG image" @click="saveImage">Save</button>
       <input ref="importInput" type="file" :accept="IMPORT_ACCEPT" multiple hidden @change="importFiles" />
     </header>
 

@@ -37,9 +37,10 @@ describe('App', () => {
     wrapper.unmount();
   });
 
-  it('“+ Board” opens templates and creates the chosen board', async () => {
+  it('+ → New board opens templates and creates the chosen board', async () => {
     const { store, wrapper } = mountApp();
-    await wrapper.find('.bar .solid').trigger('click');
+    await wrapper.find('.bar .solid.plus').trigger('click');
+    await wrapper.find('[data-action=new-board]').trigger('click');
     const tiles = wrapper.findAll('.template');
     expect(tiles.map((t) => t.find('.tp-name').text())).toEqual([
       'Blank board', 'Weekly planner', 'Kanban', 'Study plan', 'Moodboard', 'Brainstorm',
@@ -101,22 +102,18 @@ describe('App', () => {
 });
 
 describe('top bar', () => {
-  it('Save is one button; Import and Export live in the + menu', async () => {
+  it('one + menu holds New board, Import and every export; Save stays on its own', async () => {
     const store = useWorkspace();
     store.replace({ version: 2, boards: [], camera: null });
     store.addBoard('landscape');
     const wrapper = mount(App, { attachTo: document.body });
-    const labels = wrapper.findAll('.bar > button.ghost').map((b) => b.text());
-    expect(labels).toContain('Save');
-    expect(wrapper.text()).not.toContain('Save as image');
+    expect(wrapper.findAll('.bar .solid.plus')).toHaveLength(1);
+    expect(wrapper.text()).not.toContain('+ Board');
+    expect(wrapper.findAll('.bar > button.ghost').map((b) => b.text())).toEqual(['Save']);
     expect(wrapper.find('.file-menu .menu').exists()).toBe(false);
-    await wrapper.find('.file-menu .icon').trigger('click');
-    const items = wrapper.findAll('.file-menu .menu-item').map((i) => i.find('.mi-title').text());
-    expect(items[0]).toMatch(/^Import files/);
+    await wrapper.find('.bar .solid.plus').trigger('click');
     const names = wrapper.findAll('.file-menu .menu-item .mi-title').map((t) => t.element.firstChild?.textContent?.trim());
-    expect(names.slice(1)).toEqual([
-      'Word', 'PDF', 'Text', 'Markdown', 'Backup',
-    ]);
+    expect(names).toEqual(['New board', 'Import files', 'Word', 'PDF', 'Text', 'Markdown', 'Backup']);
     expect(wrapper.find('input[type=file][multiple]').attributes('accept')).toContain('.docx');
     wrapper.unmount();
   });
