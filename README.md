@@ -95,8 +95,15 @@ New boards come blank or from a template:
   (Windows Calendar, Outlook, Apple, Google) or a Google Calendar link.
 - **Install as an app** (see [Install](#install)): works offline and gets its own icon, with shortcuts to *Widget*
   and *Agenda*.
-- **Widget mode** (`#widget`, in the **+** menu): a big date card with the clock, what's up next and a live mini
-  board. Pin it as a small always-open window on your desktop, or open it from the home-screen shortcut on a phone.
+- **Add to desktop** (in the **+** menu): pick what to show (date & clock, today's reminders, the coming 7 days,
+  a mini board) and a style (Sticky, Paper, Dark), with a live preview. Then either
+  - **Open widget**: a small corkboard window for your desktop. Set it to start with Windows
+    (Edge: `edge://apps` → ⋯ → *Auto-start on device login*; Chrome: `chrome://apps` → right-click →
+    *Start app when you sign in*) and your reminders pop up every day without opening anything.
+  - **Copy wallpaper link** for [Lively Wallpaper](https://github.com/Lively-wallpaper/lively): a live wallpaper
+    behind your desktop icons (board on the left, today's list on the right, ticking clock). Lively runs its own
+    browser, so the link carries a small copy of your reminders and board (no photos); copy it again after changes.
+- **Widget mode** (`#widget`): the same widget in the current window, handy from the home-screen shortcut on a phone.
 - **Wallpapers** (in the **+** menu): *Desktop wallpaper* (2560×1440) and *Phone wallpaper* (1170×2532, with the top
   third left clear for the lock-screen clock), so the whole board fits instead of being cropped.
 
@@ -126,7 +133,7 @@ plus every note as searchable text) · plain text · Markdown (for Notion/Obsidi
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 67 tests
+npm test          # 75 tests
 npm run build     # static site in dist/ (relative paths, host it anywhere)
 ```
 
@@ -147,6 +154,7 @@ src/
 │   ├── convert.ts        text / markdown / csv → packed notes across boards, notes → txt / md
 │   ├── io.ts             file readers (pdf.js, mammoth) and writers (docx, jsPDF), loaded on demand
 │   ├── dates.ts          due dates, agenda groups, reminder timing, .ics and Google Calendar links
+│   ├── desk.ts           desktop widget settings, today/coming-up lists, wallpaper snapshots in the link
 │   ├── install.ts        device/browser detection and install steps
 │   ├── notify.ts         system notifications (through the service worker when installed)
 │   ├── wallpaper.ts      desktop and phone wallpaper layouts
@@ -159,7 +167,8 @@ src/
     ├── NoteItem.vue      one note: drag, edit, paper styles, stickers, tape, toolbar, due chip
     ├── DueEditor.vue     date, reminder and add-to-calendar popover
     ├── AgendaPanel.vue   every dated note across boards
-    ├── WidgetView.vue    the #widget screen
+    ├── WidgetView.vue    the desktop widget (#widget): window, Lively wallpaper and preview
+    ├── DeskSheet.vue     "Add to desktop": pick what it shows, open it or copy the wallpaper link
     ├── InstallSheet.vue  the #install window: one-click install or the steps for this device
     └── PushPin.vue
 ```

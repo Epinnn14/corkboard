@@ -16,6 +16,7 @@
 - [ ] Keyboard moving of notes (arrow keys) and richer screen-reader labels.
 
 ## Done
+- [x] v1.4: Add to desktop: choose what the widget shows and its style, open it as a window or a Lively live wallpaper; install page
 - [x] v1.3: due dates and reminders, agenda, widget mode, desktop/phone wallpapers, installable offline PWA
 - [x] v1.2: import txt/md/csv/html/pdf/docx/images/json; export Word, PDF, text, Markdown, JSON
 - [x] v1.1: endless workspace with any number of boards, pan/zoom, drag notes between boards,
