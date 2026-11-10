@@ -138,3 +138,26 @@ describe('calendar export', () => {
     expect(r.ok && r.board.notes[1].remind).toBeUndefined();
   });
 });
+
+describe('the date keeps up by itself', () => {
+  it('the widget turns to the next day at midnight', async () => {
+    const { vi } = await import('vitest');
+    const { mount } = await import('@vue/test-utils');
+    const { createPinia, setActivePinia } = await import('pinia');
+    const WidgetView = (await import('../src/components/WidgetView.vue')).default;
+    const { DEFAULT_DESK } = await import('../src/core/desk');
+    setActivePinia(createPinia());
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 10, 23, 59, 58));
+    const w = mount(WidgetView, { props: { config: DEFAULT_DESK, boards: [] } });
+    expect(w.find('.cal-day').text()).toBe('10');
+    expect(w.find('.cal-week').text()).toBe('Tuesday');
+    vi.advanceTimersByTime(3000);
+    await w.vm.$nextTick();
+    expect(w.find('.cal-day').text()).toBe('11');
+    expect(w.find('.cal-week').text()).toBe('Wednesday');
+    expect(w.find('.time').text()).toBe('00:00');
+    w.unmount();
+    vi.useRealTimers();
+  });
+});

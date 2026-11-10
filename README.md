@@ -156,7 +156,7 @@ plus every note as searchable text) · plain text · Markdown (for Notion/Obsidi
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 89 tests
+npm test          # 90 tests
 npm run build     # static site in dist/ (relative paths, host it anywhere)
 ```
 

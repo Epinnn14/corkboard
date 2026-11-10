@@ -3,6 +3,12 @@ import { onScopeDispose, ref } from 'vue';
 const now = ref(new Date());
 let timer: ReturnType<typeof setInterval> | undefined;
 let users = 0;
+// coming back to the window or waking the laptop: show the right day straight away
+const refresh = () => (now.value = new Date());
+if (typeof window !== 'undefined') {
+  window.addEventListener('focus', refresh);
+  document.addEventListener('visibilitychange', refresh);
+}
 
 /** A shared clock that ticks every 20 s — enough for date chips and reminders. */
 export function useNow() {

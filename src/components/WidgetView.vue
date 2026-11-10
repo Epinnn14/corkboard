@@ -43,8 +43,15 @@ const store = useWorkspace();
 
 const clock = ref(new Date());
 let t: ReturnType<typeof setInterval> | undefined;
-onMounted(() => (t = setInterval(() => (clock.value = new Date()), 1000)));
-onBeforeUnmount(() => clearInterval(t));
+const tickNow = () => (clock.value = new Date());
+onMounted(() => {
+  t = setInterval(tickNow, 1000);
+  document.addEventListener('visibilitychange', tickNow);
+});
+onBeforeUnmount(() => {
+  clearInterval(t);
+  document.removeEventListener('visibilitychange', tickNow);
+});
 
 const show = (p: DeskConfig['parts'][number]) => props.config.parts.includes(p);
 const board = computed(() =>
