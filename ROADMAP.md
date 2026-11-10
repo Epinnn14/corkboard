@@ -17,6 +17,7 @@
 - [ ] Keyboard moving of notes (arrow keys) and richer screen-reader labels.
 
 ## Done
+- [x] v1.9: agenda as a box per day with boxed times and your own note under each item, Add to my calendar (.ics); widget shows today's notes with ‹ › for other days; README: direct Windows download, runs offline
 - [x] v1.8: times written in notes go on the agenda (by day and time), ticking crosses them out; widget any size (from one sticky note), Notes-only style, notes straight on the widget, Show the widget top right
 - [x] v1.7: desktop widget redesign (calendar page, today sticky with ticks, coming-up card, Cork/Paper/Dark); Windows app with the widget, tray and start with Windows; windows stay in step; tap a polaroid's picture to add a photo
 - [x] v1.5: a board as the wallpaper (#wall) (replaced by the widget in v1.7)

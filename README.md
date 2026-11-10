@@ -4,12 +4,6 @@
 polaroids, stickers and washi tape, plan your week, run a kanban, build a moodboard.
 No account, no server: everything stays on your device.
 
-<p align="center">
-  <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-laptop.svg" alt="Install on laptop" height="56"></a>
-  &nbsp;
-  <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-phone.svg" alt="Install on phone" height="56"></a>
-</p>
-
 ![A board with sticky notes, an index card, a polaroid and stickers](docs/board.jpg)
 
 Made for the way people actually plan: students with exams and group projects,
@@ -18,24 +12,28 @@ office folks juggling tasks and meetings, and anyone who thinks better with pape
 ## Install
 
 <p align="center">
-  <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-laptop.svg" alt="Install on laptop" height="56"></a>
+  <a href="https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard.exe"><img src="docs/install-laptop.svg" alt="Download for Windows (corkboard.exe)" height="56"></a>
   &nbsp;
   <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-phone.svg" alt="Install on phone" height="56"></a>
 </p>
 
-Click **Install on laptop** or **Install on phone** (or scan the code with your phone camera). corkboard opens with an
-install window ready for the device you're on:
+**On a laptop (Windows):** the button downloads `corkboard.exe` straight away. Open it and corkboard installs itself
+and starts, with its widget on your desktop. After that it runs **locally on your laptop, no internet needed**:
+your boards are saved on the laptop, the clock, the date and the widget's calendar page follow the laptop's own clock,
+reminders pop up as Windows notifications, and **📆 Add to my calendar** in the agenda puts everything into the
+laptop's calendar (Windows Calendar, Outlook). Windows may say the publisher is unknown: *More info → Run anyway*.
+
+**On a phone** (or a Mac / Chromebook): **Install on phone** opens corkboard with an install window ready for the
+device you're on (or scan the code with your phone camera):
 
 <img src="docs/install-qr.svg" width="150" align="right" alt="QR code to install corkboard on a phone">
 
-- **Windows / Mac / Chromebook (Chrome or Edge), Android:** one **Install now** button, then confirm once.
-  corkboard gets its own window and lands in the Start menu, taskbar, Dock or home screen.
+- **Android, Mac / Chromebook (Chrome or Edge):** one **Install now** button, then confirm once. corkboard gets its
+  own icon and lands on the home screen, Dock or launcher.
 - **iPhone / iPad:** Apple doesn't let websites show an install button, so the window shows the two taps:
   *Share → Add to Home Screen*.
-- **Firefox on a laptop** can't install web apps; it still runs fine in a tab.
 
-No app store, no account, about 1 MB, works offline. To remove it, uninstall it like any other app.
-For security, browsers always ask you to confirm; no website can install itself silently.
+No app store, no account, works offline. To remove it, uninstall it like any other app.
 
 ### Windows app: the desktop widget
 
@@ -46,7 +44,9 @@ and the time, today's reminders on a sticky note (tick them off right there) and
 
 <p align="center"><img src="docs/widget.jpg" width="640" alt="The corkboard widget in its Cork, Paper and Dark styles"></p>
 
-- Pick what it shows (date & clock, today, coming up, a mini board) and its style (Cork, Paper, Dark, or
+- It shows **today's notes** to start with: the time-stamped lines of today's planner card, crossed out when you
+  tick them. **‹ ›** on the sticky flips to other days.
+- Pick what it shows (date & clock, the day's notes, coming up, a mini board) and its style (Cork, Paper, Dark, or
   **Notes only**: just the papers on your desktop, no backdrop) from the widget's ⋯ menu → *Customize*.
   A mini board's notes sit straight on the widget.
 - **Any size**: drag the bottom-left corner, or pick Auto / Small / Medium / Large / Custom. The smallest is one
@@ -111,12 +111,15 @@ New boards come blank or from a template:
 
 ## Dates, reminders & widget
 
+<img src="docs/agenda.jpg" width="280" align="right" alt="The agenda: a box per day, times in boxes, ticked items crossed out, your own notes under each">
+
 - **Times written in a note go on the agenda by themselves**: under a `MONDAY` heading, `buy milk 10.00` becomes
   *Monday 10:00 · buy milk*. It reads 10.00, 10:00, 3pm, 7.30 pm, “jam 10”, “pukul 14.15”; days as today,
   tomorrow/besok, weekday names in English or Indonesian, 12/11, 12 Nov, 2026-11-12. Tick one in the agenda or the
   widget and the line gets crossed out in the note too.
-- **Agenda** (top right, or `A`) lists everything by day and time: Overdue, Today, Tomorrow, then each day;
-  ticked items stay where they are, crossed out. Click one to jump to its note.
+- **Agenda** (top right, or `A`): a box per day (Overdue, Today, Tomorrow, then each day), each item with its time in
+  a box. Ticked items stay where they are, crossed out. Under each one, **+ add a note** for your own details
+  ("bring the racket"). Click an item to jump to its note; **📆 Add to my calendar** exports everything still to come.
 - **Due dates** on any note show a chip (overdue red, today orange, done ticked).
 - **Reminders** pop up as a banner and a system notification while corkboard is open (a tab or the installed app).
   For reminders when it is closed, use **Add to calendar** in the date editor: an `.ics` file with an alarm
@@ -156,7 +159,7 @@ plus every note as searchable text) · plain text · Markdown (for Notion/Obsidi
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 90 tests
+npm test          # 93 tests
 npm run build     # static site in dist/ (relative paths, host it anywhere)
 ```
 

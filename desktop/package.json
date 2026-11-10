@@ -1,7 +1,7 @@
 {
   "name": "corkboard-desktop",
   "productName": "corkboard",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "corkboard for Windows: a desktop widget with your date, reminders and boards",
   "main": "main.cjs",
   "author": "Epinnn14",
