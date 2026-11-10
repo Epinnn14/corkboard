@@ -366,3 +366,5 @@ button { font: inherit; cursor: pointer; }
 /* the Windows app's widget window is transparent around the widget */
 html.cb-desk-widget, html.cb-desk-widget body, html.cb-desk-widget #app { background: transparent !important; }
 .desk-dl { display: inline-block; text-decoration: none; border-radius: 999px; padding: 10px 18px; font-size: 15px; margin: 4px 0 2px; }
+
+.desk-hint { color: rgba(43, 38, 32, 0.55); font-size: 12px; }

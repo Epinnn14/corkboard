@@ -12,7 +12,7 @@
  * It lives in the tray and starts with Windows, so the widget and the
  * reminders are there all day.
  */
-const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, net, protocol, screen, shell } = require('electron');
+const { app, BrowserWindow, Menu, Notification, Tray, ipcMain, nativeImage, net, protocol, screen, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -28,7 +28,7 @@ protocol.registerSchemesAsPrivileged([
 
 // ------------------------------------------------------------- settings
 const SETTINGS_FILE = () => path.join(app.getPath('userData'), 'settings.json');
-const DEFAULTS = { widget: true, onTop: false, startup: true, firstRun: true, bounds: null };
+const DEFAULTS = { widget: true, onTop: false, startup: true, firstRun: true, toldTray: false, bounds: null };
 let settings = { ...DEFAULTS };
 function loadSettings() {
   try {
@@ -85,7 +85,18 @@ function openApp(view) {
   wireWindow(appWin);
   appWin.loadURL(`${ORIGIN}index.html${hash}`);
   appWin.once('ready-to-show', () => appWin.show());
-  appWin.on('closed', () => (appWin = null));
+  appWin.on('closed', () => {
+    appWin = null;
+    if (settings.widget && !quitting && !settings.toldTray && Notification.isSupported()) {
+      settings.toldTray = true;
+      saveSettings();
+      new Notification({
+        title: 'corkboard is still on your desktop',
+        body: 'The widget stays and reminders keep ringing. Click the corkboard icon by the clock to open it again.',
+        icon: ICON,
+      }).show();
+    }
+  });
   return appWin;
 }
 
@@ -111,6 +122,7 @@ function wireWindow(win) {
 
 // ------------------------------------------------------------- the widget
 let widget = null;
+let quitting = false;
 const SIZE = { w: 360, h: 600 };
 
 /** Where the widget goes: last place, if it's still on a screen; else top right. */
@@ -178,12 +190,17 @@ function createWidget(atCorner = false) {
     settings.bounds = { x, y };
     saveSettings();
   });
-  widget.on('closed', () => (widget = null));
+  widget.on('closed', () => {
+    widget = null;
+    // closed by you (Alt+F4 and the like), not by quitting or switching it off: that's "widget off"
+    if (!quitting && settings.widget) setSettings({ widget: false });
+  });
 }
 
 function destroyWidget() {
-  if (widget && !widget.isDestroyed()) widget.destroy();
+  const w = widget;
   widget = null;
+  if (w && !w.isDestroyed()) w.destroy();
 }
 
 // ------------------------------------------------------------- tray
@@ -198,7 +215,7 @@ function rebuildTray() {
       { label: 'Show the widget (top right)', click: () => showWidget() },
       { label: 'Widget on the desktop', type: 'checkbox', checked: settings.widget, click: (i) => setSettings({ widget: i.checked }) },
       { label: 'Keep the widget on top', type: 'checkbox', checked: settings.onTop, click: (i) => setSettings({ onTop: i.checked }) },
-      { label: 'Start with Windows', type: 'checkbox', checked: settings.startup, click: (i) => setSettings({ startup: i.checked }) },
+      { label: 'Start with Windows (while the widget is on)', type: 'checkbox', checked: settings.startup, click: (i) => setSettings({ startup: i.checked }) },
       { type: 'separator' },
       { label: 'Quit corkboard', click: () => app.quit() },
     ]),
@@ -215,7 +232,11 @@ function createTray() {
 // ------------------------------------------------------------- settings from the pages
 function setSettings(patch) {
   const before = { ...settings };
-  if (typeof patch.widget === 'boolean') settings.widget = patch.widget;
+  if (typeof patch.widget === 'boolean') {
+    settings.widget = patch.widget;
+    // the widget on means corkboard starts with Windows, until you close the widget yourself
+    if (typeof patch.startup !== 'boolean') settings.startup = patch.widget;
+  }
   if (typeof patch.onTop === 'boolean') settings.onTop = patch.onTop;
   if (typeof patch.startup === 'boolean') settings.startup = patch.startup;
   saveSettings();
@@ -283,6 +304,10 @@ if (!app.requestSingleInstanceLock()) {
     if (!process.argv.includes('--hidden')) openApp();
   });
 
-  // closing the app window keeps the widget (and reminders) running in the tray
-  app.on('window-all-closed', () => {});
+  // closing the app window keeps the widget (and its reminders) on the desktop, from the tray;
+  // with the widget off as well, there's nothing left to show: corkboard closes
+  app.on('window-all-closed', () => {
+    if (!settings.widget) app.quit();
+  });
+  app.on('before-quit', () => (quitting = true));
 }

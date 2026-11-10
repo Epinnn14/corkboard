@@ -54,8 +54,10 @@ and the time, today's reminders on a sticky note (tick them off right there) and
   *Show the widget* (tray or **+** menu) brings it to the top-right corner.
 - Click a reminder to open it in the full corkboard (Start menu / desktop shortcut). Both show the same boards:
   change a note in one, the other follows.
-- It sits in the tray and **starts with Windows**, so the widget and your **reminders** are there all day.
-  Tray menu: open, customize, show the widget, keep it on top, start with Windows, quit.
+- **Closing the corkboard window keeps the widget** on your desktop (corkboard waits by the clock, in the tray).
+- **While the widget is on, corkboard starts with Windows**, so the widget and your **reminders** are there every day.
+  Close the widget yourself (⋯ → *Close widget*) and it stops starting with Windows, until you show it again.
+- Tray menu: open, customize, show the widget, keep it on top, start with Windows, quit.
 - Windows may say the publisher is unknown (the app isn't code-signed): *More info → Run anyway*.
 - The app keeps its own boards. To bring your website boards along: **+ → Backup** on the website,
   then **+ → Import files** in the app.

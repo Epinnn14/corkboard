@@ -159,7 +159,7 @@ const pscale = computed(() => Math.min(1, (pw.value.w - 20) / win.value.w, (pw.v
           </label>
           <label class="desk-check">
             <input type="checkbox" :checked="settings?.startup" data-field="widget-startup" @change="setSetting({ startup: ($event.target as HTMLInputElement).checked })" />
-            Start corkboard with Windows
+            Start with Windows <small class="desk-hint">(on while the widget is on; closing the widget turns it off)</small>
           </label>
         </article>
         <template v-else>
