@@ -1,8 +1,8 @@
 name: Windows app
 
-# Builds corkboard-Setup.exe on every push to main and puts it on the GitHub
+# Builds corkboard.exe on every push to main and puts it on the GitHub
 # release for the current version (desktop/package.json), so
-# https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard-Setup.exe
+# https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard.exe
 # always serves the newest one.
 
 on:
@@ -64,10 +64,10 @@ jobs:
           target_commitish: ${{ github.sha }}
           make_latest: true
           overwrite_files: true
-          files: desktop/release/corkboard-Setup.exe
+          files: desktop/release/corkboard.exe
           body: |
-            **Windows:** download `corkboard-Setup.exe` and open it. corkboard installs itself, starts, and puts your
-            Weekly planner on the desktop as the wallpaper. Double-click the board to edit it, press Done to put it back.
+            **Windows:** download `corkboard.exe` and open it. corkboard installs itself, starts, and puts its widget on
+            your desktop: the date and time, today's reminders (tick them off right there) and what's coming up.
 
             Windows may warn that the publisher is unknown (the app isn't code-signed): *More info → Run anyway*.
 

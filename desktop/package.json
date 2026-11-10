@@ -1,8 +1,8 @@
 {
   "name": "corkboard-desktop",
   "productName": "corkboard",
-  "version": "1.6.0",
-  "description": "corkboard for Windows: your board as the desktop wallpaper, editable right there",
+  "version": "1.7.0",
+  "description": "corkboard for Windows: a desktop widget with your date, reminders and boards",
   "main": "main.cjs",
   "author": "Epinnn14",
   "license": "MIT",
@@ -12,9 +12,6 @@
     "start": "npm run web && electron .",
     "dist": "npm run web && electron-builder --win nsis --x64 --publish never"
   },
-  "dependencies": {
-    "koffi": "3.3.7"
-  },
   "devDependencies": {
     "electron": "41.10.7",
     "electron-builder": "26.17.0"
@@ -23,17 +20,32 @@
     "appId": "com.epinnn14.corkboard",
     "productName": "corkboard",
     "copyright": "Epinnn14",
-    "directories": { "output": "release", "buildResources": "build" },
-    "files": ["main.cjs", "preload.cjs", "win32.cjs", "web/**", "build/tray*.png", "package.json"],
-    "asarUnpack": ["node_modules/koffi/**", "node_modules/@koromix/**"],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "web/**",
+      "build/tray*.png",
+      "package.json"
+    ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
-      "artifactName": "corkboard-Setup.${ext}",
+      "artifactName": "corkboard.${ext}",
       "shortcutName": "corkboard",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,

@@ -4,24 +4,17 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 const listeners = [];
-let last = null;
-ipcRenderer.on('cb:edit-mode', (_e, state) => {
-  last = { editing: !!state?.editing, simple: !!state?.simple };
-  for (const cb of listeners) cb(last);
+ipcRenderer.on('cb:settings', (_e, s) => {
+  for (const cb of listeners) cb(s);
 });
 
 contextBridge.exposeInMainWorld('corkboardDesktop', {
-  wall: process.argv.includes('--cb-wall'),
-  version: process.env.npm_package_version ?? '',
-  onEditMode(cb) {
-    if (typeof cb !== 'function') return;
-    listeners.push(cb);
-    if (last) cb(last);
-  },
-  edit: () => ipcRenderer.send('cb:edit'),
-  done: () => ipcRenderer.send('cb:done'),
-  openApp: () => ipcRenderer.send('cb:open-app'),
-  setBoardRect: (r) => ipcRenderer.send('cb:board-rect', { x: +r.x, y: +r.y, w: +r.w, h: +r.h }),
+  widget: process.argv.includes('--cb-widget'),
+  openApp: (view) => ipcRenderer.send('cb:open-app', typeof view === 'string' ? view : undefined),
+  resizeWidget: (w, h) => ipcRenderer.send('cb:resize-widget', +w, +h),
   getSettings: () => ipcRenderer.invoke('cb:get-settings'),
   setSettings: (patch) => ipcRenderer.invoke('cb:set-settings', patch),
+  onSettings(cb) {
+    if (typeof cb === 'function') listeners.push(cb);
+  },
 });

@@ -1,32 +1,21 @@
 'use strict';
 
 /**
- * corkboard for Windows.
+ * corkboard for Windows: the desktop widget.
  *
- * Two kinds of windows show the same corkboard (one storage, kept in step by
- * the web app itself):
- *  - the wallpaper: one board (#wall) filling the main screen, behind the
- *    desktop icons. Double-click it (or click the tray icon) to edit; Done
- *    puts it back behind the icons.
- *  - the app: the full corkboard, from the Start menu, desktop or tray.
+ *  - the widget: a small frameless, transparent window (#widget) with the date,
+ *    the time, today's reminders (tick them off on it), what's coming up and,
+ *    if you like, a mini board. Drag it by its top strip; it remembers where.
+ *  - the app: the full corkboard, from the Start menu, desktop, tray or widget.
  *
- * It lives in the tray and can start with Windows, so the wallpaper and the
+ * Both show the same corkboard (one storage, kept in step by the web app).
+ * It lives in the tray and starts with Windows, so the widget and the
  * reminders are there all day.
  */
 const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, net, protocol, screen, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
-
-const isWin = process.platform === 'win32';
-let win32 = null;
-if (isWin) {
-  try {
-    win32 = require('./win32.cjs');
-  } catch (e) {
-    console.error('corkboard: Win32 helpers unavailable, using simple mode', e);
-  }
-}
 
 const WEB = path.join(__dirname, 'web');
 const ORIGIN = 'app://corkboard/';
@@ -39,7 +28,7 @@ protocol.registerSchemesAsPrivileged([
 
 // ------------------------------------------------------------- settings
 const SETTINGS_FILE = () => path.join(app.getPath('userData'), 'settings.json');
-const DEFAULTS = { wallpaper: true, mode: 'behind', startup: true, firstRun: true };
+const DEFAULTS = { widget: true, onTop: false, startup: true, firstRun: true, bounds: null };
 let settings = { ...DEFAULTS };
 function loadSettings() {
   try {
@@ -47,7 +36,6 @@ function loadSettings() {
   } catch {
     settings = { ...DEFAULTS };
   }
-  if (settings.mode !== 'simple') settings.mode = 'behind';
 }
 function saveSettings() {
   try {
@@ -61,14 +49,25 @@ function applyStartup() {
   if (!app.isPackaged) return; // don't register the dev build
   app.setLoginItemSettings({ openAtLogin: settings.startup, args: ['--hidden'] });
 }
+const publicSettings = () => ({ widget: settings.widget, onTop: settings.onTop, startup: settings.startup });
+function broadcastSettings() {
+  for (const w of BrowserWindow.getAllWindows()) w.webContents.send('cb:settings', publicSettings());
+}
 
 // ------------------------------------------------------------- the app window
 let appWin = null;
-function openApp() {
+function viewHash(view) {
+  if (view === 'desk') return '#desk';
+  if (typeof view === 'string' && /^note:[\w-]{1,64}$/.test(view)) return `#note=${view.slice(5)}`;
+  return '';
+}
+function openApp(view) {
+  const hash = viewHash(view);
   if (appWin && !appWin.isDestroyed()) {
     if (appWin.isMinimized()) appWin.restore();
     appWin.show();
     appWin.focus();
+    if (hash) void appWin.webContents.executeJavaScript(`location.hash = ${JSON.stringify(hash)}`);
     return appWin;
   }
   appWin = new BrowserWindow({
@@ -84,13 +83,13 @@ function openApp() {
     webPreferences: { preload: PRELOAD },
   });
   wireWindow(appWin);
-  appWin.loadURL(`${ORIGIN}index.html`);
+  appWin.loadURL(`${ORIGIN}index.html${hash}`);
   appWin.once('ready-to-show', () => appWin.show());
   appWin.on('closed', () => (appWin = null));
   return appWin;
 }
 
-/** Links to other sites open in the browser; corkboard pop-ups (widget) stay in the app. */
+/** Links to other sites open in the browser; corkboard pop-ups stay in the app. */
 function wireWindow(win) {
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith(ORIGIN)) {
@@ -110,162 +109,57 @@ function wireWindow(win) {
   });
 }
 
-// ------------------------------------------------------------- the wallpaper
-let wall = null;
-let editing = false;
-let host = 0; // the desktop window we sit in, when behind the icons
-let embedded = undefined; // last attempt worked?
-let boardRect = null; // where the board is inside the wallpaper (DIP)
+// ------------------------------------------------------------- the widget
+let widget = null;
+const SIZE = { w: 360, h: 600 };
 
-const primary = () => screen.getPrimaryDisplay();
-const simpleMode = () => settings.mode === 'simple' || !win32;
-
-function sendEditMode() {
-  if (wall && !wall.isDestroyed()) {
-    wall.webContents.send('cb:edit-mode', { editing: editing || simpleMode(), simple: simpleMode() });
+/** Where the widget goes: last place, if it's still on a screen; else top right. */
+function widgetBounds(w, h) {
+  const b = settings.bounds;
+  if (b) {
+    const d = screen.getDisplayMatching({ x: b.x, y: b.y, width: w, height: h });
+    const a = d.workArea;
+    const x = Math.min(Math.max(b.x, a.x), a.x + a.width - Math.min(w, a.width));
+    const y = Math.min(Math.max(b.y, a.y), a.y + a.height - Math.min(h, a.height));
+    return { x, y, width: w, height: h };
   }
+  const a = screen.getPrimaryDisplay().workArea;
+  return { x: a.x + a.width - w - 24, y: a.y + 24, width: w, height: h };
 }
 
-function createWall() {
-  if (wall && !wall.isDestroyed()) return;
-  const d = primary();
-  wall = new BrowserWindow({
-    ...d.bounds,
+function createWidget() {
+  if (widget && !widget.isDestroyed()) return widget.show();
+  widget = new BrowserWindow({
+    ...widgetBounds(SIZE.w, SIZE.h),
     frame: false,
-    show: false,
-    skipTaskbar: true,
+    transparent: true,
+    backgroundColor: '#00000000',
     resizable: false,
-    movable: false,
-    minimizable: false,
     maximizable: false,
+    minimizable: false,
     fullscreenable: false,
+    skipTaskbar: true,
     hasShadow: false,
-    title: 'corkboard wallpaper',
+    show: false,
+    title: 'corkboard widget',
     icon: ICON,
-    backgroundColor: '#ece6db',
-    webPreferences: { preload: PRELOAD, additionalArguments: ['--cb-wall'], backgroundThrottling: false },
+    alwaysOnTop: settings.onTop,
+    webPreferences: { preload: PRELOAD, additionalArguments: ['--cb-widget'], backgroundThrottling: false },
   });
-  wireWindow(wall);
-  wall.loadURL(`${ORIGIN}index.html#wall`);
-  wall.once('ready-to-show', () => {
-    wall.show();
-    toWallpaper();
-  });
-  wall.webContents.on('did-finish-load', sendEditMode);
-  wall.on('blur', () => {
-    if (simpleMode() && win32 && wall) win32.sendToBack(win32.hwndOf(wall.getNativeWindowHandle()));
-  });
-  wall.on('closed', () => {
-    wall = null;
-    host = 0;
-    editing = false;
-  });
-}
-
-function destroyWall() {
-  if (!wall) return;
-  const w = wall;
-  wall = null;
-  w.destroy();
-  if (win32) setTimeout(() => win32.refreshWallpaper(), 200);
-}
-
-/** Put the wallpaper window where it belongs: behind the icons, or at the back. */
-function toWallpaper() {
-  if (!wall || wall.isDestroyed()) return;
-  editing = false;
-  const d = primary();
-  if (simpleMode()) {
-    wall.setBounds(d.workArea);
-    if (win32) win32.sendToBack(win32.hwndOf(wall.getNativeWindowHandle()));
-    sendEditMode();
-    rebuildTray();
-    return;
-  }
-  wall.setBounds(d.bounds);
-  const physical = screen.dipToScreenRect(null, d.bounds);
-  host = win32.embed(win32.hwndOf(wall.getNativeWindowHandle()), physical);
-  embedded = !!host;
-  if (!host) {
-    // Windows wouldn't have it: fall back to a window kept at the back
-    settings.mode = 'simple';
+  wireWindow(widget);
+  widget.loadURL(`${ORIGIN}index.html#widget`);
+  widget.once('ready-to-show', () => widget.showInactive());
+  widget.on('moved', () => {
+    const [x, y] = widget.getPosition();
+    settings.bounds = { x, y };
     saveSettings();
-    toWallpaper();
-    return;
-  }
-  sendEditMode();
-  rebuildTray();
+  });
+  widget.on('closed', () => (widget = null));
 }
 
-/** Bring the wallpaper to the front so it can be edited. */
-function startEdit() {
-  if (!settings.wallpaper) return openApp();
-  if (!wall || wall.isDestroyed()) createWall();
-  if (simpleMode()) {
-    wall.show();
-    wall.focus();
-    return;
-  }
-  editing = true;
-  win32.unembed(win32.hwndOf(wall.getNativeWindowHandle()));
-  host = 0;
-  wall.setBounds(primary().workArea);
-  wall.show();
-  wall.setAlwaysOnTop(true);
-  wall.focus();
-  wall.setAlwaysOnTop(false);
-  sendEditMode();
-  rebuildTray();
-}
-
-function endEdit() {
-  if (!editing) return;
-  toWallpaper();
-}
-
-// a double-click on the board, while the desktop is in front, starts editing
-let wasDown = false;
-let lastClick = null;
-function watchDesktopClicks() {
-  if (!win32) return;
-  setInterval(() => {
-    if (!wall || editing || simpleMode() || !host) {
-      wasDown = false;
-      return;
-    }
-    const down = win32.leftButtonDown();
-    if (down && !wasDown) {
-      const now = Date.now();
-      const pt = win32.cursor();
-      if (win32.desktopInFront() && overBoard(pt)) {
-        const near = lastClick && Math.abs(lastClick.x - pt.x) < 8 && Math.abs(lastClick.y - pt.y) < 8;
-        if (lastClick && near && now - lastClick.t < win32.doubleClickTime()) {
-          lastClick = null;
-          startEdit();
-        } else {
-          lastClick = { t: now, ...pt };
-        }
-      } else {
-        lastClick = null;
-      }
-    }
-    wasDown = down;
-  }, 25);
-  // Explorer restarted (or a display changed under us): go back behind the icons
-  setInterval(() => {
-    if (wall && !editing && !simpleMode() && !win32.stillEmbedded(win32.hwndOf(wall.getNativeWindowHandle()), host)) {
-      toWallpaper();
-    }
-  }, 3000);
-}
-
-function overBoard(pt) {
-  const dip = screen.screenToDipPoint(pt);
-  const b = primary().bounds;
-  const r = boardRect ?? { x: 0, y: 0, w: b.width, h: b.height };
-  const x = dip.x - b.x;
-  const y = dip.y - b.y;
-  return x >= r.x && y >= r.y && x <= r.x + r.w && y <= r.y + r.h;
+function destroyWidget() {
+  if (widget && !widget.isDestroyed()) widget.destroy();
+  widget = null;
 }
 
 // ------------------------------------------------------------- tray
@@ -274,18 +168,11 @@ function rebuildTray() {
   if (!tray) return;
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: editing ? 'Done editing the wallpaper' : 'Edit the wallpaper', enabled: settings.wallpaper, click: () => (editing ? endEdit() : startEdit()) },
-      { label: 'Open corkboard', click: openApp },
+      { label: 'Open corkboard', click: () => openApp() },
+      { label: 'Customize the widget…', click: () => openApp('desk') },
       { type: 'separator' },
-      { label: 'Board as my wallpaper', type: 'checkbox', checked: settings.wallpaper, click: (i) => setSettings({ wallpaper: i.checked }) },
-      {
-        label: 'Wallpaper style',
-        enabled: !!win32,
-        submenu: [
-          { label: 'Behind the desktop icons', type: 'radio', checked: settings.mode === 'behind', click: () => setSettings({ mode: 'behind' }) },
-          { label: 'Simple (a window at the back)', type: 'radio', checked: settings.mode === 'simple', click: () => setSettings({ mode: 'simple' }) },
-        ],
-      },
+      { label: 'Show the widget', type: 'checkbox', checked: settings.widget, click: (i) => setSettings({ widget: i.checked }) },
+      { label: 'Keep the widget on top', type: 'checkbox', checked: settings.onTop, click: (i) => setSettings({ onTop: i.checked }) },
       { label: 'Start with Windows', type: 'checkbox', checked: settings.startup, click: (i) => setSettings({ startup: i.checked }) },
       { type: 'separator' },
       { label: 'Quit corkboard', click: () => app.quit() },
@@ -295,42 +182,41 @@ function rebuildTray() {
 function createTray() {
   const img = nativeImage.createFromPath(ICON);
   tray = new Tray(img.isEmpty() ? nativeImage.createEmpty() : img);
-  tray.setToolTip('corkboard: click to edit your wallpaper board');
-  tray.on('click', () => (settings.wallpaper ? (editing ? endEdit() : startEdit()) : openApp()));
+  tray.setToolTip('corkboard');
+  tray.on('click', () => openApp());
   rebuildTray();
 }
 
-// ------------------------------------------------------------- settings from the page
-function publicSettings() {
-  return { wallpaper: settings.wallpaper, mode: settings.mode, startup: settings.startup, embedded };
-}
+// ------------------------------------------------------------- settings from the pages
 function setSettings(patch) {
   const before = { ...settings };
-  if (typeof patch.wallpaper === 'boolean') settings.wallpaper = patch.wallpaper;
-  if (patch.mode === 'behind' || patch.mode === 'simple') settings.mode = patch.mode;
+  if (typeof patch.widget === 'boolean') settings.widget = patch.widget;
+  if (typeof patch.onTop === 'boolean') settings.onTop = patch.onTop;
   if (typeof patch.startup === 'boolean') settings.startup = patch.startup;
   saveSettings();
   if (settings.startup !== before.startup) applyStartup();
-  if (settings.wallpaper !== before.wallpaper) settings.wallpaper ? createWall() : destroyWall();
-  else if (settings.mode !== before.mode && wall) {
-    if (before.mode === 'behind' && win32) {
-      win32.unembed(win32.hwndOf(wall.getNativeWindowHandle()));
-      host = 0;
-    }
-    embedded = undefined;
-    toWallpaper();
-  }
+  if (settings.widget !== before.widget) settings.widget ? createWidget() : destroyWidget();
+  if (settings.onTop !== before.onTop && widget) widget.setAlwaysOnTop(settings.onTop);
   rebuildTray();
+  broadcastSettings();
   return publicSettings();
 }
 
 ipcMain.handle('cb:get-settings', () => publicSettings());
 ipcMain.handle('cb:set-settings', (_e, patch) => setSettings(patch ?? {}));
-ipcMain.on('cb:edit', () => startEdit());
-ipcMain.on('cb:done', () => endEdit());
-ipcMain.on('cb:open-app', () => openApp());
-ipcMain.on('cb:board-rect', (e, r) => {
-  if (wall && e.sender === wall.webContents && r && [r.x, r.y, r.w, r.h].every(Number.isFinite)) boardRect = r;
+ipcMain.on('cb:open-app', (_e, view) => openApp(view));
+ipcMain.on('cb:resize-widget', (e, w, h) => {
+  if (!widget || e.sender !== widget.webContents) return;
+  const width = Math.round(Math.min(Math.max(Number(w) || SIZE.w, 240), 1200));
+  const height = Math.round(Math.min(Math.max(Number(h) || SIZE.h, 160), 1000));
+  // grow and shrink from the top-right corner, then keep it on its screen
+  const [x, y] = widget.getPosition();
+  const [oldW] = widget.getSize();
+  const right = x + oldW;
+  const a = screen.getDisplayMatching(widget.getBounds()).workArea;
+  const nx = Math.min(Math.max(right - width, a.x), a.x + a.width - Math.min(width, a.width));
+  const ny = Math.min(Math.max(y, a.y), a.y + a.height - Math.min(height, a.height));
+  widget.setBounds({ x: nx, y: ny, width, height });
 });
 
 // ------------------------------------------------------------- start
@@ -356,22 +242,10 @@ if (!app.requestSingleInstanceLock()) {
       applyStartup();
     }
     createTray();
-    if (settings.wallpaper) createWall();
-    watchDesktopClicks();
+    if (settings.widget) createWidget();
     if (!process.argv.includes('--hidden')) openApp();
-
-    const refit = () => wall && !editing && toWallpaper();
-    screen.on('display-metrics-changed', refit);
-    screen.on('display-added', refit);
-    screen.on('display-removed', refit);
   });
 
-  // closing the app window keeps the wallpaper (and reminders) running in the tray
+  // closing the app window keeps the widget (and reminders) running in the tray
   app.on('window-all-closed', () => {});
-  app.on('before-quit', () => {
-    if (wall && host && win32) {
-      win32.unembed(win32.hwndOf(wall.getNativeWindowHandle()));
-      win32.refreshWallpaper();
-    }
-  });
 }
