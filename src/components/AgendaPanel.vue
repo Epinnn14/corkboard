@@ -122,11 +122,12 @@ header p { margin: 2px 0 0; color: rgba(43, 38, 32, 0.6); }
 .empty .big { font-size: 40px; margin: 0; }
 .muted { color: rgba(43, 38, 32, 0.6); font-size: 13.5px; }
 
-.to-cal { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; border: 1px dashed rgba(43, 38, 32, 0.25); background: transparent; border-radius: 12px; padding: 8px 12px; font: inherit; font-weight: 650; font-size: 14px; color: inherit; cursor: pointer; text-align: left; }
+.to-cal { flex: none; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; border: 1px dashed rgba(43, 38, 32, 0.25); background: transparent; border-radius: 12px; padding: 8px 12px; font: inherit; font-weight: 650; font-size: 14px; color: inherit; cursor: pointer; text-align: left; }
 .to-cal small { font-weight: 500; color: rgba(43, 38, 32, 0.55); font-size: 12px; }
 .to-cal:hover { background: rgba(43, 38, 32, 0.05); }
-/* one box per day */
+/* one box per day, as tall as its items: the panel scrolls, the boxes don't squash */
 .day {
+  flex: none;
   background: #fffdf8;
   border-radius: 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 6px 16px rgba(0, 0, 0, 0.06);
