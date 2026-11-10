@@ -63,7 +63,7 @@ watch(
   { deep: true },
 );
 
-// ---- pan with one pointer on empty space, pinch with two
+// ---- pan with one pointer on empty space (on or between the boards), pinch with two
 const pointers = new Map<number, { x: number; y: number }>();
 let panStart: { x: number; y: number; cam: Camera } | null = null;
 let pinchStart: { dist: number; mid: { x: number; y: number }; cam: Camera } | null = null;
@@ -76,7 +76,8 @@ function local(e: PointerEvent) {
 
 function onDown(e: PointerEvent) {
   const t = e.target as HTMLElement;
-  if (!(t === viewport.value || t.classList.contains('world'))) return;
+  // empty space outside the boards, and the empty cork inside them, both pan
+  if (!(t === viewport.value || t.classList.contains('world') || t.matches('.cork, .cork > .empty'))) return;
   (document.activeElement as HTMLElement | null)?.blur?.();
   store.select(null);
   viewport.value!.setPointerCapture(e.pointerId);

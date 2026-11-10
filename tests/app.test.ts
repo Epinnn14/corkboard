@@ -549,3 +549,34 @@ describe('widget day', () => {
     wrapper.unmount();
   });
 });
+
+describe('panning', () => {
+  it('dragging the empty cork pans the view and leaves the board where it is', async () => {
+    const proto = Element.prototype as unknown as { setPointerCapture?: unknown };
+    const had = proto.setPointerCapture;
+    proto.setPointerCapture = () => {};
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: { x: 0, y: 0, zoom: 0.5 } });
+    store.addBoard('landscape');
+    const wrapper = mount(App, { attachTo: document.body });
+    await wrapper.vm.$nextTick();
+    const board = store.boards[0];
+    const before = { x: board.x, y: board.y };
+    const cork = wrapper.find('[data-testid=cork]');
+    const viewport = wrapper.find('[data-testid=viewport]');
+    const fire = (el: Element, type: string, x: number, y: number) => {
+      const e = new MouseEvent(type, { clientX: x, clientY: y, button: 0, bubbles: true });
+      Object.defineProperty(e, 'pointerId', { value: 7 });
+      el.dispatchEvent(e);
+    };
+    fire(cork.element, 'pointerdown', 100, 100);
+    fire(viewport.element, 'pointermove', 160, 130);
+    fire(viewport.element, 'pointerup', 160, 130);
+    await wrapper.vm.$nextTick();
+    expect(store.ws.camera).toMatchObject({ x: 60, y: 30, zoom: 0.5 });
+    expect({ x: store.boards[0].x, y: store.boards[0].y }).toEqual(before);
+    expect(store.active?.id).toBe(board.id);
+    wrapper.unmount();
+    proto.setPointerCapture = had;
+  });
+});

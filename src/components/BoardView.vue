@@ -52,9 +52,11 @@ function onFrameUp(e: PointerEvent) {
   }
 }
 
+// a press on the empty cork makes this the active board; dragging it then pans the view
+// (the workspace picks it up) without moving the board
 function onCorkDown(e: PointerEvent) {
-  if (e.target !== e.currentTarget) return;
-  e.stopPropagation();
+  const t = e.target as HTMLElement;
+  if (t !== e.currentTarget && !t.classList.contains('empty')) return;
   (document.activeElement as HTMLElement | null)?.blur?.();
   store.select(null);
   store.setActive(props.board.id);

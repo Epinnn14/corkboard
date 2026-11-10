@@ -327,7 +327,8 @@ function onKey(e: KeyboardEvent) {
 
 .pin { position: absolute; pointer-events: none; z-index: 2; }
 
-/* die-cut sticker: thick white outline + soft shadow */
+/* die-cut sticker: thick white outline + soft shadow (text-shadow, not filter: Safari keeps
+   filtered elements as separate layers and the zoomed-out boards turn blurry) */
 .sticker {
   position: absolute;
   inset: 0;
@@ -335,8 +336,10 @@ function onKey(e: KeyboardEvent) {
   place-items: center;
   font-size: 86px;
   line-height: 1;
-  filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff)
-    drop-shadow(0 5px 6px rgba(0, 0, 0, 0.3));
+  text-shadow:
+    3px 0 0 #fff, -3px 0 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff,
+    2px 2px 0 #fff, -2px 2px 0 #fff, 2px -2px 0 #fff, -2px -2px 0 #fff,
+    0 6px 7px rgba(0, 0, 0, 0.3);
 }
 .note.sticker.selected .sticker { outline: 2px dashed rgba(40, 30, 10, 0.45); outline-offset: 2px; border-radius: 16px; }
 

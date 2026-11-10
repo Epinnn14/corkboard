@@ -22,7 +22,7 @@ export default defineConfig({
         display: 'standalone',
         display_override: ['window-controls-overlay', 'standalone'],
         background_color: '#ece6db',
-        theme_color: '#2b2620',
+        theme_color: '#f7f3ec',
         start_url: './',
         scope: './',
         icons: [

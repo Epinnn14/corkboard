@@ -62,7 +62,7 @@ them with a board's *Delete* button.
 | Add a note | double-click the board, or use the dock at the bottom |
 | Write | click a note |
 | Move | drag a note (also onto another board); drag a board by its frame or name tag |
-| Pan / zoom | drag empty space · scroll wheel or pinch · `+` `−` · `0` shows every board |
+| Pan / zoom | drag empty space (also inside a board) · scroll wheel or pinch · `+` `−` · `0` shows every board |
 | Change a note | select it: colour, tape or pin, 📅 date, duplicate, remove |
 | Plan with times | write the time next to the thing: `gym 18.00`, under a `MONDAY` heading or with a day (`fri 3pm`) |
 | Tick things off | the checkbox in the agenda or the circle on the widget: the line gets crossed out |
@@ -142,7 +142,7 @@ The backup is also how you move boards between the website and the desktop app.
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 98 tests
+npm test          # 99 tests
 npm run build     # the website in dist/ (relative paths, host it anywhere)
 ```
 

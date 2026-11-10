@@ -22,11 +22,13 @@ const COLORS: Record<PinColor, [string, string]> = {
       </radialGradient>
     </defs>
     <ellipse cx="24" cy="27" rx="10" ry="6" fill="rgba(0,0,0,0.28)" />
+    <circle cx="20" cy="20" r="11.5" fill="rgba(0,0,0,0.18)" />
     <circle cx="20" cy="19" r="11" :fill="`url(#pin-${color})`" />
     <circle cx="20" cy="19" r="11" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="1" />
   </svg>
 </template>
 
 <style scoped>
-.pin { width: 30px; height: 30px; display: block; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25)); }
+/* the shadow is drawn in the SVG: a CSS filter here would make Safari blur the zoomed-out boards */
+.pin { width: 30px; height: 30px; display: block; }
 </style>

@@ -12,6 +12,8 @@
 }
 * { box-sizing: border-box; }
 html, body, #app { margin: 0; height: 100%; }
+/* the strip behind the clock / battery on an installed iPhone or iPad matches the top bar */
+html { background: #f7f3ec; }
 body {
   overscroll-behavior: none;
   background:
@@ -26,9 +28,10 @@ button { font: inherit; cursor: pointer; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
+  /* runs up under the clock / battery strip of an installed app, so the two are one bar */
+  padding: calc(10px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
   flex-wrap: wrap;
-  background: rgba(247, 243, 236, 0.92);
+  background: #f7f3ec;
   border-bottom: 1px solid rgba(43, 38, 32, 0.1);
   position: relative;
   z-index: 20;
