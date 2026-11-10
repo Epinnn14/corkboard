@@ -95,6 +95,11 @@ New boards come blank or from a template:
   (Windows Calendar, Outlook, Apple, Google) or a Google Calendar link.
 - **Install as an app** (see [Install](#install)): works offline and gets its own icon, with shortcuts to *Widget*
   and *Agenda*.
+- **Your board as the wallpaper** (**+** → *Add to desktop*, or open `#wall`): just one board (your Weekly planner
+  by default) on a plain background, filling the screen and fully editable: click a note to write, drag it,
+  double-click to add one. Everything else hides in one round 📌 button at the bottom right (add notes, agenda,
+  another board, light/dark background, full screen, open the full app). *Open full screen* shares the same data
+  and reminders; *Copy link for Lively* puts it behind your desktop icons (Lively keeps its own copy of the board).
 - **Add to desktop** (in the **+** menu): pick what to show (date & clock, today's reminders, the coming 7 days,
   a mini board) and a style (Sticky, Paper, Dark), with a live preview. Then either
   - **Open widget**: a small corkboard window for your desktop. Set it to start with Windows
@@ -133,7 +138,7 @@ plus every note as searchable text) · plain text · Markdown (for Notion/Obsidi
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 75 tests
+npm test          # 80 tests
 npm run build     # static site in dist/ (relative paths, host it anywhere)
 ```
 
@@ -168,6 +173,7 @@ src/
     ├── DueEditor.vue     date, reminder and add-to-calendar popover
     ├── AgendaPanel.vue   every dated note across boards
     ├── WidgetView.vue    the desktop widget (#widget): window, Lively wallpaper and preview
+    ├── WallView.vue      one board as the wallpaper (#wall), editable, with the round 📌 menu
     ├── DeskSheet.vue     "Add to desktop": pick what it shows, open it or copy the wallpaper link
     ├── InstallSheet.vue  the #install window: one-click install or the steps for this device
     └── PushPin.vue

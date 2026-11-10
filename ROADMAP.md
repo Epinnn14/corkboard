@@ -16,6 +16,7 @@
 - [ ] Keyboard moving of notes (arrow keys) and richer screen-reader labels.
 
 ## Done
+- [x] v1.5: a board as the wallpaper (#wall): full screen, editable, one round button for everything else
 - [x] v1.4: Add to desktop: choose what the widget shows and its style, open it as a window or a Lively live wallpaper; install page
 - [x] v1.3: due dates and reminders, agenda, widget mode, desktop/phone wallpapers, installable offline PWA
 - [x] v1.2: import txt/md/csv/html/pdf/docx/images/json; export Word, PDF, text, Markdown, JSON
