@@ -46,8 +46,12 @@ and the time, today's reminders on a sticky note (tick them off right there) and
 
 <p align="center"><img src="docs/widget.jpg" width="640" alt="The corkboard widget in its Cork, Paper and Dark styles"></p>
 
-- Pick what it shows (date & clock, today, coming up, a mini board) and its style (Cork, Paper, Dark) from the
-  widget's ⋯ menu → *Customize*. Drag it by its top strip; it remembers where.
+- Pick what it shows (date & clock, today, coming up, a mini board) and its style (Cork, Paper, Dark, or
+  **Notes only**: just the papers on your desktop, no backdrop) from the widget's ⋯ menu → *Customize*.
+  A mini board's notes sit straight on the widget.
+- **Any size**: drag the bottom-left corner, or pick Auto / Small / Medium / Large / Custom. The smallest is one
+  sticky note (220 × 220); the biggest is your screen. Drag it by its top strip; it remembers where, and
+  *Show the widget* (tray or **+** menu) brings it to the top-right corner.
 - Click a reminder to open it in the full corkboard (Start menu / desktop shortcut). Both show the same boards:
   change a note in one, the other follows.
 - It sits in the tray and **starts with Windows**, so the widget and your **reminders** are there all day.
@@ -107,8 +111,13 @@ New boards come blank or from a template:
 
 ## Dates, reminders & widget
 
-- **Due dates** on any note show a chip (overdue red, today orange, done ticked). **Agenda** (top right, or `A`)
-  lists everything by Overdue / Today / Tomorrow / This week / Later; click an item to jump to its note.
+- **Times written in a note go on the agenda by themselves**: under a `MONDAY` heading, `buy milk 10.00` becomes
+  *Monday 10:00 · buy milk*. It reads 10.00, 10:00, 3pm, 7.30 pm, “jam 10”, “pukul 14.15”; days as today,
+  tomorrow/besok, weekday names in English or Indonesian, 12/11, 12 Nov, 2026-11-12. Tick one in the agenda or the
+  widget and the line gets crossed out in the note too.
+- **Agenda** (top right, or `A`) lists everything by day and time: Overdue, Today, Tomorrow, then each day;
+  ticked items stay where they are, crossed out. Click one to jump to its note.
+- **Due dates** on any note show a chip (overdue red, today orange, done ticked).
 - **Reminders** pop up as a banner and a system notification while corkboard is open (a tab or the installed app).
   For reminders when it is closed, use **Add to calendar** in the date editor: an `.ics` file with an alarm
   (Windows Calendar, Outlook, Apple, Google) or a Google Calendar link.
@@ -147,7 +156,7 @@ plus every note as searchable text) · plain text · Markdown (for Notion/Obsidi
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 83 tests
+npm test          # 89 tests
 npm run build     # static site in dist/ (relative paths, host it anywhere)
 ```
 
@@ -179,6 +188,7 @@ src/
 │   ├── io.ts             file readers (pdf.js, mammoth) and writers (docx, jsPDF), loaded on demand
 │   ├── dates.ts          due dates, agenda groups, reminder timing, .ics and Google Calendar links
 │   ├── desk.ts           desktop widget settings, window sizes, today/coming-up lists
+│   ├── detect.ts         times and days written in notes → agenda items; crossing a line out
 │   ├── desktop.ts        the bridge to the Windows app (widget window, settings)
 │   ├── sync.ts           autosave + keeping several corkboard windows in step (BroadcastChannel)
 │   ├── install.ts        device/browser detection and install steps
