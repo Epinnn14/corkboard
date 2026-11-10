@@ -37,18 +37,21 @@ install window ready for the device you're on:
 No app store, no account, about 1 MB, works offline. To remove it, uninstall it like any other app.
 For security, browsers always ask you to confirm; no website can install itself silently.
 
-### Windows app: your board as the wallpaper
+### Windows app: the desktop widget
 
-**[⬇️ Download corkboard for Windows](https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard-Setup.exe)**
+**[⬇️ Download corkboard.exe](https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard.exe)**
 
-Open the file: corkboard installs itself, starts, and puts your **Weekly planner on the desktop as the wallpaper**,
-behind your icons. No extra apps.
+Open the file: corkboard installs itself, starts, and puts its **widget on your desktop**: a tear-off calendar page
+and the time, today's reminders on a sticky note (tick them off right there) and what's coming up on an index card.
 
-- **Double-click the board** on the desktop (or click the corkboard icon by the clock) to edit it: write, drag,
-  add notes, change colours and dates. Press **Done** (or Esc) and it goes back behind the icons.
-- The same app has the full corkboard (Start menu / desktop shortcut). Change a note in one, the other follows.
-- It sits in the tray and **starts with Windows**, so the wallpaper and your **reminders** are there all day.
-  Tray menu: edit, open, wallpaper on/off, *Behind the icons* or *Simple* style, start with Windows, quit.
+<p align="center"><img src="docs/widget.jpg" width="640" alt="The corkboard widget in its Cork, Paper and Dark styles"></p>
+
+- Pick what it shows (date & clock, today, coming up, a mini board) and its style (Cork, Paper, Dark) from the
+  widget's ⋯ menu → *Customize*. Drag it by its top strip; it remembers where.
+- Click a reminder to open it in the full corkboard (Start menu / desktop shortcut). Both show the same boards:
+  change a note in one, the other follows.
+- It sits in the tray and **starts with Windows**, so the widget and your **reminders** are there all day.
+  Tray menu: open, customize, show the widget, keep it on top, start with Windows, quit.
 - Windows may say the publisher is unknown (the app isn't code-signed): *More info → Run anyway*.
 - The app keeps its own boards. To bring your website boards along: **+ → Backup** on the website,
   then **+ → Import files** in the app.
@@ -102,7 +105,7 @@ New boards come blank or from a template:
 | Keys | `N` new sticky · `B` new board · `A` agenda · `Delete` remove · `Esc` deselect |
 | Keep / share | **Save** downloads the current board as a PNG · the **+** menu has New board, Import and Export (below) |
 
-## Dates, reminders, widget & wallpaper
+## Dates, reminders & widget
 
 - **Due dates** on any note show a chip (overdue red, today orange, done ticked). **Agenda** (top right, or `A`)
   lists everything by Overdue / Today / Tomorrow / This week / Later; click an item to jump to its note.
@@ -111,17 +114,11 @@ New boards come blank or from a template:
   (Windows Calendar, Outlook, Apple, Google) or a Google Calendar link.
 - **Install as an app** (see [Install](#install)): works offline and gets its own icon, with shortcuts to *Widget*
   and *Agenda*.
-- **Your board as the wallpaper**: the [Windows app](#windows-app-your-board-as-the-wallpaper) puts it behind your
-  desktop icons. On the website, **+** → *Add to desktop* → *Open full screen* (or `#wall`) shows just one board
-  (your Weekly planner by default) on a plain background, fully editable, with everything else in one round 📌
-  button at the bottom right (add notes, agenda, another board, light/dark background, full screen, open the app).
-- **Desktop widget** (**+** → *Add to desktop*): pick what to show (date & clock, today's reminders, the coming 7 days,
-  a mini board) and a style (Sticky, Paper, Dark), with a live preview, then
-  - **Open widget**: a small corkboard window for your desktop. Set it to start with Windows
-    (Edge: `edge://apps` → ⋯ → *Auto-start on device login*; Chrome: `chrome://apps` → right-click →
-    *Start app when you sign in*) and your reminders pop up every day without opening anything.
+- **Desktop widget** (**+** → *Desktop widget*): pick what to show (date & clock, today's reminders, the coming 7 days,
+  a mini board) and a style (Cork, Paper, Dark), with a live preview. Get it on your desktop with the
+  [Windows app](#windows-app-the-desktop-widget), or *Open widget* in a small browser window.
 - **Widget mode** (`#widget`): the same widget in the current window, handy from the home-screen shortcut on a phone.
-- **Wallpapers** (in the **+** menu): *Desktop wallpaper* (2560×1440) and *Phone wallpaper* (1170×2532, with the top
+- **Wallpaper pictures** (in the **+** menu): *Desktop wallpaper* (2560×1440) and *Phone wallpaper* (1170×2532, with the top
   third left clear for the lock-screen clock), so the whole board fits instead of being cropped.
 
 ## Import & export
@@ -155,7 +152,7 @@ npm run build     # static site in dist/ (relative paths, host it anywhere)
 ```
 
 Pushing to `main` runs the tests and deploys to GitHub Pages
-(*Settings → Pages → Source: GitHub Actions*), and builds `corkboard-Setup.exe` on a Windows runner and attaches it
+(*Settings → Pages → Source: GitHub Actions*), and builds `corkboard.exe` on a Windows runner and attaches it
 to the GitHub release of the current version (`desktop/package.json`).
 
 The Windows app (Electron) is in `desktop/`:
@@ -163,14 +160,14 @@ The Windows app (Electron) is in `desktop/`:
 ```bash
 npm run build                 # the website, in dist/
 cd desktop && npm install
-npm start                     # run it (on Linux/macOS the wallpaper is a normal window)
-npm run dist                  # Windows installer in desktop/release/ (run on Windows)
+npm start                     # run it
+npm run dist                  # desktop/release/corkboard.exe (run on Windows)
 ``` Workspaces from v1.0 (single board) are migrated automatically.
 
 ## How it's built
 
 Vue 3 (`<script setup>`) · Pinia · TypeScript · Vite · idb-keyval · html-to-image · pdf.js · mammoth · docx · jsPDF ·
-vite-plugin-pwa · Electron + koffi (Windows app) · Fontsource (Bricolage Grotesque, Caveat, Patrick Hand) · Vitest + Vue Test Utils + fake-indexeddb
+vite-plugin-pwa · Electron (Windows app) · Fontsource (Bricolage Grotesque, Caveat, Patrick Hand) · Vitest + Vue Test Utils + fake-indexeddb
 
 ```
 src/
@@ -181,8 +178,8 @@ src/
 │   ├── convert.ts        text / markdown / csv → packed notes across boards, notes → txt / md
 │   ├── io.ts             file readers (pdf.js, mammoth) and writers (docx, jsPDF), loaded on demand
 │   ├── dates.ts          due dates, agenda groups, reminder timing, .ics and Google Calendar links
-│   ├── desk.ts           desktop widget and wallpaper settings, today/coming-up lists, snapshots in links
-│   ├── desktop.ts        the bridge to the Windows app (wallpaper edit mode, settings)
+│   ├── desk.ts           desktop widget settings, window sizes, today/coming-up lists
+│   ├── desktop.ts        the bridge to the Windows app (widget window, settings)
 │   ├── sync.ts           autosave + keeping several corkboard windows in step (BroadcastChannel)
 │   ├── install.ts        device/browser detection and install steps
 │   ├── notify.ts         system notifications (through the service worker when installed)
@@ -196,14 +193,12 @@ src/
     ├── NoteItem.vue      one note: drag, edit, paper styles, stickers, tape, toolbar, due chip
     ├── DueEditor.vue     date, reminder and add-to-calendar popover
     ├── AgendaPanel.vue   every dated note across boards
-    ├── WidgetView.vue    the desktop widget (#widget) and its preview
-    ├── WallView.vue      one board as the wallpaper (#wall), editable, with the round 📌 menu
-    ├── DeskSheet.vue     "Add to desktop": the Windows app / wallpaper settings and the widget
+    ├── WidgetView.vue    the widget (#widget): calendar page, today, coming up, mini board
+    ├── DeskSheet.vue     "Desktop widget": what it shows, its style, the Windows app or a pop-up
     ├── InstallSheet.vue  the #install window: one-click install or the steps for this device
     └── PushPin.vue
 desktop/                  the Windows app (Electron)
-├── main.cjs              tray, the wallpaper window and its edit mode, the app window, start with Windows
-├── win32.cjs             Win32 calls (koffi) to sit behind the desktop icons and notice a double-click there
+├── main.cjs              tray, the widget window, the app window, start with Windows
 └── preload.cjs           window.corkboardDesktop for the web app
 ```
 

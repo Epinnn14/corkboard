@@ -12,14 +12,14 @@
 - [ ] Optional sync between devices (a JSON file in a cloud folder).
 - [ ] Push reminders while the app is closed (needs a small push server).
 - [ ] Native Android home-screen widget (Capacitor wrapper).
-- [ ] Windows app: code signing, auto-update, a wallpaper on every monitor.
+- [ ] Windows app: code signing, auto-update, more widget sizes, quick-add a reminder from the widget.
 - [ ] More surfaces (whiteboard, chalkboard, fridge door with magnets) and seasonal sticker packs.
 - [ ] Keyboard moving of notes (arrow keys) and richer screen-reader labels.
 
 ## Done
-- [x] v1.6: Windows app: the board as the real desktop wallpaper (behind the icons, double-click to edit), tray, start with Windows; windows stay in step
-- [x] v1.5: a board as the wallpaper (#wall): full screen, editable, one round button for everything else
-- [x] v1.4: Add to desktop: choose what the widget shows and its style, open it as a window or a Lively live wallpaper; install page
+- [x] v1.7: desktop widget redesign (calendar page, today sticky with ticks, coming-up card, Cork/Paper/Dark); Windows app with the widget, tray and start with Windows; windows stay in step; tap a polaroid's picture to add a photo
+- [x] v1.5: a board as the wallpaper (#wall) (replaced by the widget in v1.7)
+- [x] v1.4: Add to desktop: choose what the widget shows and its style, open it as a window; install page
 - [x] v1.3: due dates and reminders, agenda, widget mode, desktop/phone wallpapers, installable offline PWA
 - [x] v1.2: import txt/md/csv/html/pdf/docx/images/json; export Word, PDF, text, Markdown, JSON
 - [x] v1.1: endless workspace with any number of boards, pan/zoom, drag notes between boards,
