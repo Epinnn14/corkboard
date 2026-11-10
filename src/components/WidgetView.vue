@@ -211,7 +211,7 @@ function pick(fn: () => void) {
           <button v-if="desk" role="menuitem" data-action="widget-top" @click="pick(() => emit('on-top', !onTop))">
             📌 {{ onTop ? 'Stop keeping on top' : 'Keep on top' }}
           </button>
-          <button v-if="desk" role="menuitem" data-action="widget-hide" title="It won't start with Windows until you show it again" @click="pick(() => emit('hide'))">✕ Close widget</button>
+          <button v-if="desk" role="menuitem" data-action="widget-hide" title="It won't start with your computer until you show it again" @click="pick(() => emit('hide'))">✕ Close widget</button>
         </div>
       </div>
 

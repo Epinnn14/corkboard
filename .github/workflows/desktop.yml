@@ -1,9 +1,11 @@
-name: Windows app
+name: Desktop apps
 
-# Builds corkboard.exe on every push to main and puts it on the GitHub
-# release for the current version (desktop/package.json), so
-# https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard.exe
-# always serves the newest one.
+# Builds corkboard.exe (Windows) and corkboard-mac.dmg (Mac) on every push to
+# main and puts both on the GitHub release for the current version
+# (desktop/package.json), so
+#   https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard.exe
+#   https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard-mac.dmg
+# always serve the newest ones.
 
 on:
   push:
@@ -23,7 +25,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: windows-app
+  group: desktop-apps
   cancel-in-progress: true
 
 jobs:
@@ -51,16 +53,66 @@ jobs:
           npm ci
           npm run dist
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: desktop/release/corkboard.exe
+          if-no-files-found: error
+
+  mac:
+    runs-on: macos-latest
+    env:
+      # not signed with an Apple Developer ID: ad-hoc signed, opened once via Privacy & Security
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+
+      - name: Build the web app
+        run: |
+          npm ci
+          npm run build
+
+      - name: Package the Mac app (Apple silicon + Intel)
+        working-directory: desktop
+        run: |
+          npm ci
+          npm run dist:mac
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: desktop/release/corkboard-mac.dmg
+          if-no-files-found: error
+
+  release:
+    # the Windows app is required; the Mac app goes on the release when it built
+    needs: [windows, mac]
+    if: ${{ !cancelled() && needs.windows.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Read the version
         id: v
-        shell: bash
         run: |
           v=$(node -p "require('./desktop/package.json').version")
           echo "version=$v" >> "$GITHUB_OUTPUT"
           # "2.0.0" is shown as "2.0"
           echo "name=${v%.0}" >> "$GITHUB_OUTPUT"
 
-      - name: Publish the installer
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      - name: Publish the installers
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.v.outputs.version }}
@@ -68,16 +120,25 @@ jobs:
           target_commitish: ${{ github.sha }}
           make_latest: true
           overwrite_files: true
-          files: desktop/release/corkboard.exe
+          fail_on_unmatched_files: false
+          files: |
+            out/corkboard.exe
+            out/corkboard-mac.dmg
           body: |
-            **Windows:** download `corkboard.exe` and open it. corkboard installs itself, starts, and puts its widget on
-            your desktop with today's notes. It runs on your laptop, no internet needed.
+            | Device | Get it |
+            |---|---|
+            | **Windows** | download `corkboard.exe` and open it: it installs itself, starts, and puts its widget on your desktop |
+            | **Mac** | download `corkboard-mac.dmg`, open it and drag corkboard into Applications (Apple silicon and Intel) |
+            | **iPhone / iPad** | open https://epinnn14.github.io/corkboard/#install=ios in Safari → Share → *Add to Home Screen* |
+            | **Android** | open https://epinnn14.github.io/corkboard/#install=android → *Install* |
 
             - Boards of sticky notes, index cards, lined paper and photos; a Weekly planner, Kanban and more to start from
             - Write a time in a note (`gym 18.00`) and it's in the Agenda, by day and time, and rings at the time
             - Tick things off in the Agenda or on the widget: the line gets crossed out
             - The widget: any size, Cork / Paper / Dark / Notes only, ‹ › for other days; drag it by its top middle
+            - Runs on your computer, no internet needed
 
-            Windows may warn that the publisher is unknown (the app isn't code-signed): *More info → Run anyway*.
+            The apps aren't code-signed. **Windows:** *More info → Run anyway*. **Mac:** the first time, System
+            Settings → Privacy & Security → *Open Anyway*.
 
             Website (no install): https://epinnn14.github.io/corkboard/

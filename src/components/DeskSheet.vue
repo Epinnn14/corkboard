@@ -2,7 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { Board } from '../core/board';
 import { clampSize, DESK_MIN, DESK_PARTS, DESK_SIZES, DESK_THEMES, type DeskConfig, type DeskPart, deskWindowSize } from '../core/desk';
-import { desktop, type DesktopSettings, WINDOWS_DOWNLOAD } from '../core/desktop';
+import { desktop, type DesktopSettings, MAC_DOWNLOAD, osName, WINDOWS_DOWNLOAD } from '../core/desktop';
+import { detectDevice } from '../core/install';
 import WidgetView from './WidgetView.vue';
 
 const props = defineProps<{ boards: readonly Board[]; initial: DeskConfig }>();
@@ -40,8 +41,13 @@ function setCustom(axis: 'w' | 'h', v: string) {
   cfg.value.size = clampSize({ ...cur, [axis]: Number(v) });
 }
 
-// inside the Windows app: the widget lives on the desktop already
+// inside the desktop app: the widget lives on the desktop already
 const bridge = desktop();
+const os = osName(bridge);
+const download = os === 'Mac' ? MAC_DOWNLOAD : WINDOWS_DOWNLOAD;
+// a phone or tablet can't run the desktop app: only the small-window widget there
+const dev = typeof navigator === 'undefined' ? 'other' : detectDevice(navigator.userAgent, navigator.maxTouchPoints ?? 0);
+const mobile = dev === 'ios' || dev === 'android';
 const settings = ref<DesktopSettings | null>(null);
 if (bridge) void bridge.getSettings().then((x) => (settings.value = x));
 async function setSetting(patch: Partial<DesktopSettings>) {
@@ -159,18 +165,23 @@ const pscale = computed(() => Math.min(1, (pw.value.w - 20) / win.value.w, (pw.v
           </label>
           <label class="desk-check">
             <input type="checkbox" :checked="settings?.startup" data-field="widget-startup" @change="setSetting({ startup: ($event.target as HTMLInputElement).checked })" />
-            Start with Windows <small class="desk-hint">(on while the widget is on; closing the widget turns it off)</small>
+            Start with {{ os }} <small class="desk-hint">(on while the widget is on; closing the widget turns it off)</small>
           </label>
         </article>
         <template v-else>
-          <article class="desk-way desk-get" data-card="get-app">
-            <h3>🧩 corkboard for Windows</h3>
+          <article v-if="!mobile" class="desk-way desk-get" data-card="get-app">
+            <h3>🧩 corkboard for {{ os }}</h3>
             <p>
-              The widget sits on your desktop from the moment Windows starts, with reminders all day. Free, installs
-              itself in a few seconds.
+              The widget sits on your desktop from the moment your {{ os === 'Mac' ? 'Mac' : 'laptop' }} starts, with
+              reminders all day. Free, installs in a few seconds.
             </p>
-            <a class="solid desk-dl" :href="WINDOWS_DOWNLOAD" data-action="get-windows-app">⬇️ Download corkboard.exe</a>
-            <p class="desk-tip">Windows may say the publisher is unknown: <i>More info → Run anyway</i>.</p>
+            <a class="solid desk-dl" :href="download" :data-action="os === 'Mac' ? 'get-mac-app' : 'get-windows-app'">
+              ⬇️ {{ os === 'Mac' ? 'Download for Mac' : 'Download corkboard.exe' }}
+            </a>
+            <p v-if="os === 'Mac'" class="desk-tip">
+              Drag it into Applications. The first time: System Settings → Privacy &amp; Security → <i>Open Anyway</i>.
+            </p>
+            <p v-else class="desk-tip">Windows may say the publisher is unknown: <i>More info → Run anyway</i>.</p>
           </article>
           <article class="desk-way">
             <h3>🪟 Or here, in a small window</h3>

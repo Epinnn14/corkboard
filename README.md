@@ -2,7 +2,7 @@
 
 **An endless wall of cork boards on your laptop and phone.** Pin sticky notes, index cards, lined paper, polaroids,
 stickers and washi tape; plan your week, run a kanban, build a moodboard. Write a time next to a plan and it lands in
-your agenda and on your desktop widget. No account, no server: everything stays on your device.
+your agenda and on your desktop widget. For Windows, Mac, iPhone, iPad and Android. No account, no server: everything stays on your device.
 
 ![The Start here board: a welcome card, a How to use note, a to-do card and stickers](docs/board.jpg)
 
@@ -12,22 +12,40 @@ meetings, and anyone who thinks better with paper on a wall.
 ## Install
 
 <p align="center">
-  <a href="https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard.exe"><img src="docs/install-laptop.svg" alt="Download for Windows (corkboard.exe)" height="56"></a>
+  <a href="https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard.exe"><img src="docs/install-windows.svg" alt="Download for Windows (corkboard.exe)" height="56"></a>
   &nbsp;
-  <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-phone.svg" alt="Install on phone" height="56"></a>
+  <a href="https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard-mac.dmg"><img src="docs/install-mac.svg" alt="Download for Mac (corkboard-mac.dmg)" height="56"></a>
+  <br>
+  <a href="https://epinnn14.github.io/corkboard/#install=ios"><img src="docs/install-ios.svg" alt="Install on iPhone and iPad" height="56"></a>
+  &nbsp;
+  <a href="https://epinnn14.github.io/corkboard/#install=android"><img src="docs/install-android.svg" alt="Install on Android" height="56"></a>
 </p>
 
-**Windows laptop:** the button downloads `corkboard.exe`. Open it and corkboard installs itself, starts, and puts its
-widget on your desktop. It runs **on your laptop, no internet needed**: boards are saved on the laptop, the date and time
-follow the laptop's clock, and reminders pop up as Windows notifications. Windows may say the publisher is unknown
-(the app isn't code-signed): *More info → Run anyway*.
+| Device | How |
+|---|---|
+| **Windows** | The button downloads `corkboard.exe`. Open it: corkboard installs itself, starts, and puts its widget on your desktop. If Windows says the publisher is unknown (the app isn't code-signed): *More info → Run anyway*. |
+| **Mac** | The button downloads `corkboard-mac.dmg` (Apple silicon and Intel). Open it and drag corkboard into **Applications**. The first time, macOS can't check the app (it isn't signed by Apple): click *Done*, then *System Settings → Privacy & Security → Open Anyway*. |
+| **iPhone / iPad** | Apple only lets the App Store install apps, so corkboard installs from Safari: tap **Share** (bottom on iPhone, top right on iPad; on iOS 26 tap **⋯** first) → *Add to Home Screen* → *Add*. |
+| **Android** | The button opens corkboard with an **Install now** button (or Chrome's *⋮ → Install app*). |
 
-<img src="docs/install-qr.svg" width="130" align="right" alt="QR code to install corkboard on a phone">
+On Windows and Mac it runs **on your computer, no internet needed**: boards are saved there, the date and time follow
+the computer's clock, reminders pop up as notifications, and the widget starts with the computer while it's on.
 
-**Phone, Mac or Chromebook:** **Install on phone** (or scan the code) opens corkboard with an install window for your
-device: one **Install now** button on Android and in Chrome/Edge; on iPhone and iPad, *Share → Add to Home Screen*.
+<img src="docs/install-qr.svg" width="110" align="right" alt="QR code to install corkboard on a phone or tablet">
 
-Or just use it in the browser: **[epinnn14.github.io/corkboard](https://epinnn14.github.io/corkboard/)**.
+On a phone or tablet, scan the code: it opens the install window for that device. Or just use corkboard in the
+browser: **[epinnn14.github.io/corkboard](https://epinnn14.github.io/corkboard/)**.
+
+<details>
+<summary>Mac: “corkboard is damaged” or no <i>Open Anyway</i> button?</summary>
+
+Open Terminal and run this once, then open corkboard again:
+
+```bash
+xattr -cr /Applications/corkboard.app
+```
+
+</details>
 
 ## How to use it
 
@@ -85,7 +103,7 @@ note from one board straight onto another. Boards are landscape on wide screens 
 - **A box per day** (Overdue, Today, Tomorrow, then each day), every item with its time. Tick one and it's crossed
   out, in the agenda and in the note. Under each item, **+ add a note** for your own details.
 - **Dates and reminders** on any note with 📅: a day, a time, and a reminder at the time, 10 min, 1 h or 1 day before.
-- Reminders pop up while corkboard is open; on Windows the widget keeps it open all day.
+- Reminders pop up while corkboard is open; on Windows and Mac the widget keeps it open all day.
 - **📆 Add to my calendar** puts everything still to come into Windows Calendar, Outlook, Google or Apple Calendar (.ics).
 
 ## Desktop widget
@@ -97,8 +115,8 @@ note from one board straight onto another. Boards are landscape on wide screens 
 - Four styles: **Cork**, **Paper**, **Dark**, or **Notes only** (just the papers on your desktop).
 - **Any size**, from one sticky note up to the whole screen: drag its bottom-left corner, or pick a size in *Customize*.
   Move it by its top middle. *Show the widget* brings it to the top-right corner.
-- In the Windows app it stays on the desktop when you close corkboard, and **starts with Windows while it's on**.
-  Close the widget yourself (⋯ → *Close widget*) and it stops starting with Windows, until you show it again.
+- In the Windows and Mac app it stays on the desktop when you close corkboard, and **starts with the computer while
+  it's on**. Close the widget yourself (⋯ → *Close widget*) and it stops starting up, until you show it again.
 - On a phone or in the browser: **+** → *Desktop widget* → *Open widget*, or *Widget mode*.
 
 ## Import & export
@@ -115,28 +133,30 @@ note from one board straight onto another. Boards are landscape on wide screens 
 | `.json` | a corkboard backup |
 
 **Export** every board as Word, PDF (a picture of each board plus all the text), plain text, Markdown or a JSON backup.
-The backup is also how you move boards between the website and the Windows app.
+The backup is also how you move boards between the website and the desktop app.
 
 ## For developers
 
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 94 tests
+npm test          # 97 tests
 npm run build     # the website in dist/ (relative paths, host it anywhere)
 ```
 
-The Windows app (Electron) is in `desktop/`:
+The Windows and Mac app (Electron) is in `desktop/`:
 
 ```bash
 npm run build                 # the website first
 cd desktop && npm install
 npm start                     # run it
 npm run dist                  # desktop/release/corkboard.exe (on Windows)
+npm run dist:mac              # desktop/release/corkboard-mac.dmg (on a Mac)
 ```
 
-Every push to `main` runs the tests, deploys the website to GitHub Pages and builds `corkboard.exe` on a Windows
-runner for the release of the current version. Boards saved by older versions are upgraded automatically.
+Every push to `main` runs the tests, deploys the website to GitHub Pages, builds `corkboard.exe` on a Windows runner
+and `corkboard-mac.dmg` on a Mac runner, and puts both on the release of the current version. Boards saved by older
+versions are upgraded automatically.
 
 **Built with** Vue 3 · Pinia · TypeScript · Vite · vite-plugin-pwa · Electron · idb-keyval · html-to-image · pdf.js ·
 mammoth · docx · jsPDF · Fontsource (Bricolage Grotesque, Caveat, Patrick Hand) · Vitest.
@@ -155,7 +175,7 @@ src/
 │   ├── dates.ts          due dates, agenda days, reminders, .ics
 │   ├── detect.ts         times and days written in notes → agenda items
 │   ├── desk.ts           widget settings, sizes, the day's list
-│   ├── desktop.ts        the bridge to the Windows app
+│   ├── desktop.ts        the bridge to the desktop app
 │   ├── sync.ts           autosave, keeping several windows in step
 │   ├── install.ts        install steps per device and browser
 │   ├── notify.ts         system notifications
@@ -165,7 +185,7 @@ src/
 └── components/           Workspace, BoardView, NoteItem, DueEditor, AgendaPanel,
                           WidgetView, DeskSheet, InstallSheet, PushPin
 desktop/
-├── main.cjs              tray, the widget window, the app window, start with Windows
+├── main.cjs              tray / menu bar, the widget window, the app window, start with the computer
 └── preload.cjs           window.corkboardDesktop for the web app
 ```
 

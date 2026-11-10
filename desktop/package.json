@@ -2,7 +2,7 @@
   "name": "corkboard-desktop",
   "productName": "corkboard",
   "version": "2.0.0",
-  "description": "corkboard for Windows: a desktop widget with your date, reminders and boards",
+  "description": "corkboard for Windows and Mac: a desktop widget with your date, reminders and boards",
   "main": "main.cjs",
   "author": "Epinnn14",
   "license": "MIT",
@@ -10,7 +10,8 @@
   "scripts": {
     "web": "node scripts/copy-web.cjs",
     "start": "npm run web && electron .",
-    "dist": "npm run web && electron-builder --win nsis --x64 --publish never"
+    "dist": "npm run web && electron-builder --win nsis --x64 --publish never",
+    "dist:mac": "npm run web && electron-builder --mac --publish never"
   },
   "devDependencies": {
     "electron": "41.10.7",
@@ -29,6 +30,7 @@
       "preload.cjs",
       "web/**",
       "build/tray*.png",
+      "build/icon.png",
       "package.json"
     ],
     "win": {
@@ -51,6 +53,26 @@
       "createStartMenuShortcut": true,
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.productivity",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "artifactName": "corkboard-mac.${ext}"
+    },
+    "dmg": {
+      "title": "corkboard",
+      "artifactName": "corkboard-mac.${ext}"
     }
   }
 }

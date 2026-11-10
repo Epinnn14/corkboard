@@ -17,7 +17,7 @@ import {
 import { autoOrientation } from './core/workspace';
 import type { Board } from './core/board';
 import { attentionCount, dueLabel, dueReminders, noteTitle, reminderKey, textReminderKey, textReminders } from './core/dates';
-import { isInstalled } from './core/install';
+import { isInstalled, type Platform, platformFromHash } from './core/install';
 import {
   DEFAULT_DESK,
   type DeskConfig,
@@ -47,7 +47,8 @@ const paletteOpen = ref(false);
 const stickersOpen = ref(false);
 const sheetOpen = ref(false);
 const agendaOpen = ref(window.location.hash === '#agenda');
-const installOpen = ref(window.location.hash === '#install');
+const installOpen = ref(window.location.hash === '#install' || !!platformFromHash(window.location.hash));
+const installTab = ref<Platform | null>(platformFromHash(window.location.hash));
 const isWidget = () => window.location.hash.startsWith('#widget');
 const routeOf = (): 'app' | 'widget' => (isWidget() ? 'widget' : 'app');
 const route = ref(routeOf());
@@ -133,7 +134,10 @@ function onHash() {
   route.value = routeOf();
   readDesk();
   if (window.location.hash === '#agenda') agendaOpen.value = true;
-  if (window.location.hash === '#install') installOpen.value = true;
+  if (window.location.hash === '#install' || platformFromHash(window.location.hash)) {
+    installTab.value = platformFromHash(window.location.hash);
+    installOpen.value = true;
+  }
   if (window.location.hash.startsWith('#note=')) {
     const id = decodeURIComponent(window.location.hash.slice(6));
     history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -189,11 +193,12 @@ window.addEventListener('appinstalled', () => {
 });
 function openInstall() {
   fileOpen.value = false;
+  installTab.value = null;
   installOpen.value = true;
 }
 function closeInstall() {
   installOpen.value = false;
-  if (window.location.hash === '#install') history.replaceState(null, '', window.location.pathname + window.location.search);
+  if (window.location.hash.startsWith('#install')) history.replaceState(null, '', window.location.pathname + window.location.search);
 }
 async function install() {
   const p = installPrompt.value;
@@ -584,9 +589,9 @@ onBeforeUnmount(() => {
             <span class="mi-ico" aria-hidden="true">🗓️</span>
             <span class="mi-title">Widget mode<small>date, clock, what's next + a mini board</small></span>
           </button>
-          <button v-if="!installed" class="menu-item" role="menuitem" data-action="install" @click="openInstall">
+          <button v-if="!bridge" class="menu-item" role="menuitem" data-action="install" @click="openInstall">
             <span class="mi-ico" aria-hidden="true">⬇️</span>
-            <span class="mi-title">Install app<small>laptop or phone: own icon, works offline</small></span>
+            <span class="mi-title">Install app<small>Windows · Mac · iPhone / iPad · Android</small></span>
           </button>
         </div>
       </div>
@@ -694,6 +699,7 @@ onBeforeUnmount(() => {
       :can-prompt="!!installPrompt"
       :installed="installed"
       :just-installed="justInstalled"
+      :initial="installTab"
       @install="install"
       @close="closeInstall"
     />

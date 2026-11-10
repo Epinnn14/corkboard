@@ -297,7 +297,11 @@ button { font: inherit; cursor: pointer; }
 .inst-tabs small { opacity: 0.7; }
 .inst-one { background: #fff27a; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 8px 18px rgba(120, 100, 0, 0.15); transform: rotate(-0.4deg); }
 .inst-one p { margin: 10px 0 0; font-size: 14px; }
-.inst-go { font-size: 18px; padding: 12px 22px; border-radius: 999px; }
+.inst-go { font-size: 18px; padding: 12px 22px; border-radius: 999px; display: inline-block; text-decoration: none; }
+.inst-one code { word-break: break-all; font-size: 12px; }
+.inst-web { margin-top: 14px; border-top: 1px dashed rgba(43, 38, 32, 0.25); padding-top: 10px; font-size: 14px; }
+.inst-web summary { cursor: pointer; font-weight: 600; margin-bottom: 8px; }
+.inst-web > .solid { margin: 4px 0 8px; }
 .inst-other { background: #f4efe6; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; }
 .inst-other p { margin: 0 0 6px; }
 .inst-other code { word-break: break-all; font-size: 13px; }

@@ -43,7 +43,7 @@ function grow(e: Event) {
       <button class="x" aria-label="Close agenda" @click="emit('close')">×</button>
     </header>
     <button v-if="upcoming.length" class="to-cal" data-action="agenda-ics" @click="toCalendar">
-      📆 Add {{ upcoming.length }} to my calendar <small>.ics · Windows Calendar, Outlook, Google</small>
+      📆 Add {{ upcoming.length }} to my calendar <small>.ics · Windows Calendar, Outlook, Google, Apple</small>
     </button>
     <div v-if="!days.length" class="empty">
       <p class="big">📅</p>

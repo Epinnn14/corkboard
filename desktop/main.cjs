@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * corkboard for Windows: the desktop widget.
+ * corkboard for Windows and Mac: the desktop widget.
  *
  *  - the widget: a small frameless, transparent window (#widget) with the date,
  *    the time, today's reminders (tick them off on it), what's coming up and,
@@ -9,8 +9,8 @@
  *  - the app: the full corkboard, from the Start menu, desktop, tray or widget.
  *
  * Both show the same corkboard (one storage, kept in step by the web app).
- * It lives in the tray and starts with Windows, so the widget and the
- * reminders are there all day.
+ * It lives in the tray (the menu bar on a Mac) and starts with the computer,
+ * so the widget and the reminders are there all day.
  */
 const { app, BrowserWindow, Menu, Notification, Tray, ipcMain, nativeImage, net, protocol, screen, shell } = require('electron');
 const fs = require('node:fs');
@@ -21,6 +21,8 @@ const WEB = path.join(__dirname, 'web');
 const ORIGIN = 'app://corkboard/';
 const PRELOAD = path.join(__dirname, 'preload.cjs');
 const ICON = path.join(__dirname, 'build', 'tray.png');
+const MAC = process.platform === 'darwin';
+const OS = MAC ? 'Mac' : 'Windows';
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, codeCache: true } },
@@ -43,6 +45,16 @@ function saveSettings() {
     fs.writeFileSync(SETTINGS_FILE(), JSON.stringify(settings, null, 2));
   } catch (e) {
     console.error('corkboard: could not save settings', e);
+  }
+}
+/** Started by the computer at login: only the widget, no app window. */
+function startedAtLogin() {
+  if (process.argv.includes('--hidden')) return true;
+  if (!MAC) return false;
+  try {
+    return !!app.getLoginItemSettings().wasOpenedAtLogin;
+  } catch {
+    return false;
   }
 }
 function applyStartup() {
@@ -92,7 +104,9 @@ function openApp(view) {
       saveSettings();
       new Notification({
         title: 'corkboard is still on your desktop',
-        body: 'The widget stays and reminders keep ringing. Click the corkboard icon by the clock to open it again.',
+        body: MAC
+          ? 'The widget stays and reminders keep ringing. Click corkboard in the Dock or the menu bar to open it again.'
+          : 'The widget stays and reminders keep ringing. Click the corkboard icon by the clock to open it again.',
         icon: ICON,
       }).show();
     }
@@ -215,17 +229,20 @@ function rebuildTray() {
       { label: 'Show the widget (top right)', click: () => showWidget() },
       { label: 'Widget on the desktop', type: 'checkbox', checked: settings.widget, click: (i) => setSettings({ widget: i.checked }) },
       { label: 'Keep the widget on top', type: 'checkbox', checked: settings.onTop, click: (i) => setSettings({ onTop: i.checked }) },
-      { label: 'Start with Windows (while the widget is on)', type: 'checkbox', checked: settings.startup, click: (i) => setSettings({ startup: i.checked }) },
+      { label: `Start with ${OS} (while the widget is on)`, type: 'checkbox', checked: settings.startup, click: (i) => setSettings({ startup: i.checked }) },
       { type: 'separator' },
       { label: 'Quit corkboard', click: () => app.quit() },
     ]),
   );
 }
 function createTray() {
-  const img = nativeImage.createFromPath(ICON);
+  let img = nativeImage.createFromPath(ICON);
+  // the Mac menu bar wants a small icon
+  if (MAC && !img.isEmpty()) img = img.resize({ width: 18, height: 18 });
   tray = new Tray(img.isEmpty() ? nativeImage.createEmpty() : img);
   tray.setToolTip('corkboard');
-  tray.on('click', () => openApp());
+  // on a Mac a click opens the menu (as menu-bar icons do); on Windows it opens corkboard
+  if (!MAC) tray.on('click', () => openApp());
   rebuildTray();
 }
 
@@ -301,7 +318,15 @@ if (!app.requestSingleInstanceLock()) {
     }
     createTray();
     if (settings.widget) createWidget();
-    if (!process.argv.includes('--hidden')) openApp();
+    if (!startedAtLogin()) openApp();
+  });
+
+  // Mac: clicking the Dock icon brings corkboard back (not the activation right at a login start)
+  let readyAt = 0;
+  app.on('ready', () => (readyAt = Date.now()));
+  app.on('activate', () => {
+    if (!app.isReady() || (startedAtLogin() && Date.now() - readyAt < 3000)) return;
+    openApp();
   });
 
   // closing the app window keeps the widget (and its reminders) on the desktop, from the tray;

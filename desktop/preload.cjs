@@ -10,6 +10,7 @@ ipcRenderer.on('cb:settings', (_e, s) => {
 
 contextBridge.exposeInMainWorld('corkboardDesktop', {
   widget: process.argv.includes('--cb-widget'),
+  platform: process.platform,
   openApp: (view) => ipcRenderer.send('cb:open-app', typeof view === 'string' ? view : undefined),
   resizeWidget: (w, h) => ipcRenderer.send('cb:resize-widget', +w, +h),
   showWidget: () => ipcRenderer.send('cb:show-widget'),

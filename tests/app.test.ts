@@ -210,7 +210,7 @@ describe('install', () => {
     wrapper.unmount();
   });
 
-  it('the + menu opens it too, with tabs for laptop, Android and iPhone', async () => {
+  it('the + menu opens it too, with a tab each for Windows, Mac, iPhone / iPad and Android', async () => {
     const store = useWorkspace();
     store.replace({ version: 2, boards: [], camera: null });
     store.addBoard('landscape');
@@ -218,11 +218,28 @@ describe('install', () => {
     await wrapper.find('.bar .solid.plus').trigger('click');
     await wrapper.find('[data-action=install]').trigger('click');
     const tabs = wrapper.findAll('.inst-tabs button');
-    expect(tabs.map((t) => t.text().split(' ·')[0].trim())).toEqual(['💻 Laptop / PC', '🤖 Android', '📱 iPhone / iPad']);
+    expect(tabs.map((t) => t.text().split(' ·')[0].trim())).toEqual(['🪟 Windows', '🍎 Mac', '📱 iPhone / iPad', '🤖 Android']);
+    expect(wrapper.find('[data-action=download-windows]').attributes('href')).toMatch(/corkboard\.exe$/);
+    await tabs[1].trigger('click');
+    expect(wrapper.find('[data-action=download-mac]').attributes('href')).toMatch(/corkboard-mac\.dmg$/);
     await tabs[2].trigger('click');
     expect(wrapper.find('.inst-steps').text()).toContain('Add to Home Screen');
-    expect(wrapper.find('.inst-other code').text()).toMatch(/#install$/);
+    expect(wrapper.find('.inst-other code').text()).toMatch(/#install=ios$/);
+    await tabs[3].trigger('click');
+    expect(wrapper.find('.inst-other code').text()).toMatch(/#install=android$/);
     wrapper.unmount();
+  });
+
+  it('#install=mac opens straight on the Mac tab', async () => {
+    window.location.hash = '#install=mac';
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    const wrapper = mount(App, { attachTo: document.body });
+    expect(wrapper.find('.inst-tabs .on').text()).toContain('Mac');
+    expect(wrapper.find('[data-action=download-mac]').exists()).toBe(true);
+    wrapper.unmount();
+    window.location.hash = '';
   });
 });
 
