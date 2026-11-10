@@ -158,3 +158,40 @@ export async function decodeSnapshot(code: string): Promise<DeskSnapshot | null>
     return null;
   }
 }
+
+// ------------------------------------------------- the board as a wallpaper
+//
+// #wall?board=…  one board filling the screen, editable, every other control
+// folded into one round button. `bg` is the plain backdrop around it; `snap`
+// carries the board for Lively Wallpaper (its browser has its own storage).
+
+export type WallBg = 'light' | 'dark';
+
+export function wallHash(boardId: string | null, bg: WallBg = 'light', snap?: string): string {
+  const p = new URLSearchParams();
+  if (boardId) p.set('board', boardId.slice(0, 64));
+  if (bg !== 'light') p.set('bg', bg);
+  if (snap) p.set('snap', snap);
+  const q = p.toString();
+  return q ? `#wall?${q}` : '#wall';
+}
+
+export function parseWallHash(hash: string): { boardId: string | null; bg: WallBg; snap: string | null } | null {
+  if (hash !== '#wall' && !hash.startsWith('#wall?')) return null;
+  const p = new URLSearchParams(hash.slice(6));
+  const board = p.get('board');
+  return {
+    boardId: board ? board.slice(0, 64) : null,
+    bg: p.get('bg') === 'dark' ? 'dark' : 'light',
+    snap: p.get('snap'),
+  };
+}
+
+/** The board people most likely want on their wall: a weekly planner if there is one. */
+export function defaultWallBoard(boards: readonly Board[], active: Board | null): Board | null {
+  return boards.find((b) => /weekly planner/i.test(b.title)) ?? active ?? boards[0] ?? null;
+}
+
+export function boardSnapshot(board: Board, now = Date.now()): DeskSnapshot {
+  return makeSnapshot([board], { parts: ['board'], theme: 'sticky', boardId: board.id, wall: true }, now);
+}

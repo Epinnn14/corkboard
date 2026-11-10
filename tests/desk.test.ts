@@ -83,3 +83,19 @@ describe('wallpaper snapshot', () => {
     expect(await decodeSnapshot(bad)).toBeNull();
   });
 });
+
+describe('board wallpaper', () => {
+  it('hash round trip and the weekly planner as default', async () => {
+    const { wallHash, parseWallHash, defaultWallBoard } = await import('../src/core/desk');
+    expect(wallHash('b1')).toBe('#wall?board=b1');
+    expect(wallHash(null)).toBe('#wall');
+    expect(parseWallHash('#wall?board=b1&bg=dark&snap=zAB')).toEqual({ boardId: 'b1', bg: 'dark', snap: 'zAB' });
+    expect(parseWallHash('#wall')).toEqual({ boardId: null, bg: 'light', snap: null });
+    expect(parseWallHash('#wallpaper')).toBeNull();
+    expect(parseWallHash('#widget')).toBeNull();
+    const a = createBoard([], 'landscape', 'My board');
+    const w = createBoard([a], 'landscape', 'Weekly planner');
+    expect(defaultWallBoard([a, w], a)?.title).toBe('Weekly planner');
+    expect(defaultWallBoard([a], null)?.title).toBe('My board');
+  });
+});

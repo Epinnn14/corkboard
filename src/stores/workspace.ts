@@ -53,6 +53,8 @@ interface State {
   draggingId: string | null;
   undo: Undo | null;
   loaded: boolean;
+  /** board shown alone (wallpaper view): notes can't leave it and it can't be dragged */
+  lockedBoardId: string | null;
 }
 
 export const useWorkspace = defineStore('workspace', {
@@ -63,6 +65,7 @@ export const useWorkspace = defineStore('workspace', {
     draggingId: null,
     undo: null,
     loaded: false,
+    lockedBoardId: null,
   }),
 
   getters: {
@@ -184,7 +187,7 @@ export const useWorkspace = defineStore('workspace', {
       const { board, note } = f;
       const src = corkRect(board);
       const centre = { x: src.x + note.x + note.w / 2, y: src.y + note.y + note.h / 2 };
-      const target = boardAt(this.ws.boards, centre);
+      const target = this.lockedBoardId === board.id ? null : boardAt(this.ws.boards, centre);
       if (!target || target.id === board.id) {
         Object.assign(note, clampToBoard(note, board.orientation));
         return;
@@ -302,6 +305,16 @@ export const useWorkspace = defineStore('workspace', {
       } else {
         b.notes.push(...u.notes);
       }
+    },
+
+    /** Wallpaper link opened in another browser (Lively): add its board once, then edits stay local. */
+    adoptBoard(b: Board): Board {
+      const mine = this.board(b.id);
+      if (mine) return mine;
+      const [placed] = placeImported(this.ws.boards, [b]);
+      const kept = { ...placed, id: b.id };
+      this.ws.boards.push(kept);
+      return kept;
     },
 
     importBoards(incoming: Board[]): Board[] {

@@ -52,6 +52,30 @@ describe('workspace store', () => {
     expect(s.draggingId).toBeNull();
   });
 
+  it('on a locked board (wallpaper view) a note never jumps to a hidden neighbour', () => {
+    const s = fresh();
+    const a = s.active!;
+    const b = s.addBoard('landscape');
+    const n = s.addNote('sticky', { boardId: a.id, at: { x: 300, y: 300 } })!;
+    s.lockedBoardId = a.id;
+    const ca = corkRect(a);
+    const cb = corkRect(b);
+    s.dragNote(n.id, cb.x - ca.x + 500, cb.y - ca.y + 400);
+    s.dropNote(n.id);
+    expect(s.find(n.id)?.board.id).toBe(a.id);
+  });
+
+  it('adoptBoard adds a board from a wallpaper link once, keeping its id', () => {
+    const s = fresh();
+    const other = fresh().addBoard('landscape', 'week');
+    const kept = s.adoptBoard({ ...other, notes: [...other.notes] });
+    expect(kept.id).toBe(other.id);
+    s.updateNote(kept.notes[0].id, { text: 'edited on the wall' });
+    expect(s.adoptBoard(other)).toBe(s.board(other.id));
+    expect(s.board(other.id)!.notes[0].text).toBe('edited on the wall');
+    expect(s.boards.filter((b) => b.id === other.id)).toHaveLength(1);
+  });
+
   it('a note dropped on empty space snaps back onto its own board', () => {
     const s = fresh();
     const n = s.addNote('sticky')!;
