@@ -88,6 +88,14 @@ export const useWorkspace = defineStore('workspace', {
       this.loaded = true;
     },
 
+    /** Another corkboard window saved: take its boards, keep this window's view and selection. */
+    applyRemote(ws: Workspace) {
+      this.ws = { ...ws, camera: this.ws.camera };
+      if (!ws.boards.some((b) => b.id === this.activeId)) this.activeId = ws.boards[0]?.id ?? null;
+      if (this.selectedId && !ws.boards.some((b) => b.notes.some((n) => n.id === this.selectedId))) this.selectedId = null;
+      if (this.lockedBoardId && !ws.boards.some((b) => b.id === this.lockedBoardId)) this.lockedBoardId = null;
+    },
+
     find(noteId: string): { board: Board; note: Note } | null {
       for (const board of this.ws.boards) {
         const note = board.notes.find((n) => n.id === noteId);
