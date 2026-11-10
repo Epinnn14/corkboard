@@ -54,20 +54,29 @@ jobs:
       - name: Read the version
         id: v
         shell: bash
-        run: echo "version=$(node -p "require('./desktop/package.json').version")" >> "$GITHUB_OUTPUT"
+        run: |
+          v=$(node -p "require('./desktop/package.json').version")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          # "2.0.0" is shown as "2.0"
+          echo "name=${v%.0}" >> "$GITHUB_OUTPUT"
 
       - name: Publish the installer
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.v.outputs.version }}
-          name: corkboard ${{ steps.v.outputs.version }}
+          name: corkboard ${{ steps.v.outputs.name }}
           target_commitish: ${{ github.sha }}
           make_latest: true
           overwrite_files: true
           files: desktop/release/corkboard.exe
           body: |
             **Windows:** download `corkboard.exe` and open it. corkboard installs itself, starts, and puts its widget on
-            your desktop: the date and time, today's reminders (tick them off right there) and what's coming up.
+            your desktop with today's notes. It runs on your laptop, no internet needed.
+
+            - Boards of sticky notes, index cards, lined paper and photos; a Weekly planner, Kanban and more to start from
+            - Write a time in a note (`gym 18.00`) and it's in the Agenda, by day and time, and rings at the time
+            - Tick things off in the Agenda or on the widget: the line gets crossed out
+            - The widget: any size, Cork / Paper / Dark / Notes only, ‹ › for other days; drag it by its top middle
 
             Windows may warn that the publisher is unknown (the app isn't code-signed): *More info → Run anyway*.
 
