@@ -56,7 +56,7 @@ const LAYOUTS: Record<Exclude<TemplateId, 'blank'>, (put: Put, o: Orientation) =
   },
   study(put, o) {
     const l = o === 'landscape';
-    put('card', l ? 0.17 : 0.3, l ? 0.18 : 0.1, 'EXAM: Calculus II\n📅 in 12 days\nRoom B-204, 09:00');
+    put('card', l ? 0.17 : 0.3, l ? 0.18 : 0.1, 'EXAM: Calculus II\n📅 in 12 days\nRoom B-204, first thing');
     put('lined', l ? 0.17 : 0.27, l ? 0.66 : 0.4, 'Topics to review\n\n☐ integrals\n☐ series\n☐ diff. equations\n☐ past papers');
     put('index', l ? 0.5 : 0.72, l ? 0.2 : 0.12, 'SCHEDULE\nMon  ch. 4\nWed  ch. 5\nFri  mock test');
     put('sticky', l ? 0.47 : 0.75, l ? 0.62 : 0.4, 'Pomodoro\n25 min focus\n5 min break', { color: '#ff9f80' });

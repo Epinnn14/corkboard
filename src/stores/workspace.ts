@@ -11,6 +11,7 @@ import {
   TAPES,
   topZ,
 } from '../core/board';
+import { toggleLineDone } from '../core/detect';
 import { buildTemplate, type TemplateId } from '../core/templates';
 import { boardAt, type Camera, corkRect, createBoard, placeImported, type Workspace } from '../core/workspace';
 
@@ -241,6 +242,18 @@ export const useWorkspace = defineStore('workspace', {
       if (!f || !f.note.due) return;
       if (f.note.done) delete f.note.done;
       else f.note.done = true;
+    },
+
+    /** Tick a line of a note that the agenda found a time in: crosses it out (or back in). */
+    toggleLine(id: string, line: number) {
+      const f = this.find(id);
+      if (f) this.updateNote(id, { text: toggleLineDone(f.note.text, line) });
+    },
+
+    /** Tick an agenda item: a dated note, or a line with a time in it. */
+    toggleItem(item: { note: { id: string }; line?: number }) {
+      if (item.line === undefined) this.toggleDone(item.note.id);
+      else this.toggleLine(item.note.id, item.line);
     },
 
     markNotified(id: string, key: string) {

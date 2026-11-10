@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { agenda, dueLabel, longDate, noteTitle } from '../core/dates';
+import { type AgendaItem, agendaDays, dueLabel, longDate, timeOf } from '../core/dates';
 import { useNow } from '../composables/now';
 import { useWorkspace } from '../stores/workspace';
 
 const emit = defineEmits<{ close: []; reveal: [noteId: string] }>();
 const store = useWorkspace();
 const now = useNow();
-const groups = computed(() => agenda(store.boards, now.value));
+const days = computed(() => agendaDays(store.boards, now.value));
+const late = (i: AgendaItem) => !i.done && (i.state === 'overdue');
 </script>
 
 <template>
@@ -19,27 +20,31 @@ const groups = computed(() => agenda(store.boards, now.value));
       </div>
       <button class="x" aria-label="Close agenda" @click="emit('close')">×</button>
     </header>
-    <div v-if="!groups.length" class="empty">
+    <div v-if="!days.length" class="empty">
       <p class="big">📅</p>
       <p>Nothing scheduled yet.</p>
-      <p class="muted">Select a note and tap 📅 to give it a date and a reminder.</p>
+      <p class="muted">Write a time in a note (“buy milk 10.00”), or select a note and tap 📅 to give it a date and a reminder.</p>
     </div>
-    <section v-for="g in groups" :key="g.state" class="group" :class="g.state">
-      <h3>{{ g.title }} <span>{{ g.items.length }}</span></h3>
+    <section v-for="d in days" :key="d.key" class="day" :class="{ overdue: d.key === 'overdue', today: d.title === 'Today' }">
+      <h3>{{ d.title }} <small v-if="d.sub">{{ d.sub }}</small></h3>
       <ul>
-        <li v-for="{ note, board } in g.items" :key="note.id">
+        <li v-for="i in d.items" :key="i.key" :class="{ done: i.done, late: late(i) }">
           <input
-            :id="`agenda-done-${note.id}`"
+            :id="`agenda-done-${i.key}`"
             type="checkbox"
-            :checked="!!note.done"
-            :aria-label="`Mark “${noteTitle(note)}” as done`"
-            @change="store.toggleDone(note.id)"
+            :checked="i.done"
+            :aria-label="`Mark “${i.title}” as done`"
+            @change="store.toggleItem(i)"
           />
-          <button class="item" @click="emit('reveal', note.id)">
-            <span class="swatch" :style="{ background: note.kind === 'sticky' || note.kind === 'card' ? note.color : '#fff' }" />
+          <button class="item" @click="emit('reveal', i.note.id)">
+            <span class="time">{{ d.key === 'overdue' ? dueLabel(i.due, now).replace(/ \d\d:\d\d$/, '') : timeOf(i.due) }}</span>
             <span class="txt">
-              <b>{{ noteTitle(note) }}</b>
-              <small>{{ dueLabel(note.due!, now) }}<template v-if="note.remind !== undefined"> · ⏰</template> · {{ board.title }}</small>
+              <b>{{ i.title }}</b>
+              <small>
+                <template v-if="d.key === 'overdue'">{{ timeOf(i.due) }} · </template>{{ i.board.title }}<template
+                  v-if="i.line === undefined && i.note.remind !== undefined"
+                > · ⏰</template><template v-if="i.line !== undefined"> · from the note</template>
+              </small>
             </span>
           </button>
         </li>
@@ -71,11 +76,10 @@ header p { margin: 2px 0 0; color: rgba(43, 38, 32, 0.6); }
 .empty { text-align: center; padding: 40px 10px; }
 .empty .big { font-size: 40px; margin: 0; }
 .muted { color: rgba(43, 38, 32, 0.6); font-size: 13.5px; }
-.group h3 { margin: 0 0 6px; font-size: 12.5px; letter-spacing: 0.06em; text-transform: uppercase; display: flex; gap: 6px; align-items: center; }
-.group h3 span { background: rgba(43, 38, 32, 0.08); border-radius: 999px; padding: 0 7px; font-size: 11.5px; }
+.day h3 { margin: 0 0 6px; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; display: flex; gap: 8px; align-items: baseline; }
+.day h3 small { font-size: 12px; letter-spacing: 0; text-transform: none; font-weight: 500; color: rgba(43, 38, 32, 0.55); }
 .overdue h3 { color: #d9412b; }
 .today h3 { color: #d97a0c; }
-.tomorrow h3 { color: #6a4ce0; }
 ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 li { display: flex; align-items: center; gap: 8px; }
 li input { width: 18px; height: 18px; accent-color: #3c9a5f; flex: none; }
@@ -85,5 +89,10 @@ li input { width: 18px; height: 18px; accent-color: #3c9a5f; flex: none; }
 .txt { min-width: 0; display: flex; flex-direction: column; }
 .txt b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .txt small { color: rgba(43, 38, 32, 0.6); font-size: 12.5px; }
-.done .txt b { text-decoration: line-through; color: rgba(43, 38, 32, 0.5); }
+.time { flex: none; min-width: 46px; font-weight: 800; font-variant-numeric: tabular-nums; font-size: 15px; }
+.late .time { color: #d9412b; }
+.txt b { transition: color 0.2s; text-decoration: line-through; text-decoration-color: transparent; transition: text-decoration-color 0.25s, color 0.25s; }
+/* ticked: the words get crossed out, right where they are */
+.done .txt b { text-decoration-color: rgba(43, 38, 32, 0.7); text-decoration-thickness: 2px; color: rgba(43, 38, 32, 0.45); }
+.done .time { color: rgba(43, 38, 32, 0.35); text-decoration: line-through; }
 </style>

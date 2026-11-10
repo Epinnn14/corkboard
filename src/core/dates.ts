@@ -3,6 +3,7 @@
  * ("2026-11-14T09:00"), the same string <input type="datetime-local"> uses.
  */
 import type { Board, Note } from './board';
+import { detectTimes } from './detect';
 
 export type DueState = 'done' | 'overdue' | 'today' | 'tomorrow' | 'week' | 'later';
 
@@ -110,10 +111,47 @@ export function dueReminders(boards: readonly Board[], now: Date): DueItem[] {
   return out;
 }
 
+/**
+ * One thing on the agenda: a note with a date (set with 📅), or a line of a
+ * note with a time written in it ("buy milk 10.00", see detect.ts).
+ */
+export interface AgendaItem {
+  key: string;
+  note: Note;
+  board: Board;
+  due: string;
+  title: string;
+  done: boolean;
+  state: DueState;
+  /** found in the note's text: the line it came from */
+  line?: number;
+}
+
+function stateOf(due: string, done: boolean, now: Date): DueState {
+  return dueState({ due, done }, now)!;
+}
+
+/** Everything with a time, from dates and from the notes' text, in time order. */
+export function agendaItems(boards: readonly Board[], now: Date): AgendaItem[] {
+  const items: AgendaItem[] = [];
+  for (const board of boards) {
+    for (const note of board.notes) {
+      if (note.due) {
+        const done = !!note.done;
+        items.push({ key: note.id, note, board, due: note.due, title: noteTitle(note), done, state: stateOf(note.due, done, now) });
+      }
+      for (const d of detectTimes(note, now)) {
+        items.push({ key: `${note.id}#${d.line}`, note, board, due: d.due, title: d.title, done: d.done, state: stateOf(d.due, d.done, now), line: d.line });
+      }
+    }
+  }
+  return items.sort((a, b) => parseDue(a.due).getTime() - parseDue(b.due).getTime());
+}
+
 export interface AgendaGroup {
   state: DueState;
   title: string;
-  items: DueItem[];
+  items: AgendaItem[];
 }
 
 const GROUPS: { state: DueState; title: string }[] = [
@@ -126,26 +164,68 @@ const GROUPS: { state: DueState; title: string }[] = [
 ];
 
 export function agenda(boards: readonly Board[], now: Date): AgendaGroup[] {
-  const items: (DueItem & { state: DueState })[] = [];
-  for (const board of boards) {
-    for (const note of board.notes) {
-      const state = dueState(note, now);
-      if (state) items.push({ note, board, state });
-    }
-  }
-  items.sort((a, b) => parseDue(a.note.due!).getTime() - parseDue(b.note.due!).getTime());
+  const items = agendaItems(boards, now);
   return GROUPS.map((g) => ({ ...g, items: items.filter((i) => i.state === g.state) })).filter((g) => g.items.length);
+}
+
+export interface AgendaDay {
+  /** 'overdue', or the day as YYYY-MM-DD */
+  key: string;
+  title: string;
+  /** "Tue 10 Nov" under Today / Tomorrow, empty otherwise */
+  sub: string;
+  items: AgendaItem[];
+}
+
+const LONG_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/**
+ * The agenda by day and time: what's late from earlier days first, then one
+ * group per day from today on. Ticked items stay in their day, crossed out.
+ */
+export function agendaDays(boards: readonly Board[], now: Date): AgendaDay[] {
+  const out: AgendaDay[] = [];
+  const late: AgendaItem[] = [];
+  const days = new Map<string, AgendaItem[]>();
+  for (const i of agendaItems(boards, now)) {
+    const diff = dayDiff(parseDue(i.due), now);
+    if (diff < 0) {
+      if (!i.done) late.push(i);
+      continue;
+    }
+    const k = i.due.slice(0, 10);
+    days.set(k, [...(days.get(k) ?? []), i]);
+  }
+  if (late.length) out.push({ key: 'overdue', title: 'Overdue', sub: '', items: late });
+  for (const [k, items] of days) {
+    const d = parseDue(`${k}T00:00`);
+    const diff = dayDiff(d, now);
+    const short = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+    const title = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `${LONG_DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+    out.push({ key: k, title, sub: diff <= 1 ? short : '', items });
+  }
+  return out;
+}
+
+/** "10:00" */
+export function timeOf(due: string): string {
+  return due.slice(11, 16);
 }
 
 /** How many things need attention (overdue + today) — for the agenda badge. */
 export function attentionCount(boards: readonly Board[], now: Date): number {
-  let n = 0;
-  for (const b of boards) for (const note of b.notes) {
-    const s = dueState(note, now);
-    if (s === 'overdue' || s === 'today') n++;
-  }
-  return n;
+  return agendaItems(boards, now).filter((i) => i.state === 'overdue' || i.state === 'today').length;
 }
+
+/** Times written in notes ring at the time, once (`seen` remembers which already did). */
+export function textReminders(boards: readonly Board[], now: Date, seen: ReadonlySet<string>): AgendaItem[] {
+  return agendaItems(boards, now).filter((i) => {
+    if (i.line === undefined || i.done || seen.has(textReminderKey(i))) return false;
+    const t = parseDue(i.due).getTime();
+    return t <= now.getTime() && now.getTime() - t < DAY;
+  });
+}
+export const textReminderKey = (i: Pick<AgendaItem, 'note' | 'title' | 'due'>) => `${i.note.id}|${i.title}|${i.due}`;
 
 export function noteTitle(note: Pick<Note, 'text' | 'kind'>): string {
   const first = note.text.split('\n').find((l) => l.trim())?.trim() ?? '';
