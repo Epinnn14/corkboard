@@ -7,10 +7,14 @@ import { autoOrientation } from './core/workspace';
 import { useWorkspace, welcomeWorkspace } from './stores/workspace';
 import './style.css';
 
+// iPadOS / iOS before 15.4 lack Object.hasOwn, which Pinia uses
+if (!Object.hasOwn) Object.defineProperty(Object, 'hasOwn', { value: (o: object, k: PropertyKey) => Object.prototype.hasOwnProperty.call(o, k), configurable: true, writable: true });
+
 const app = createApp(App).use(createPinia());
 const store = useWorkspace();
 
-loadWorkspace().then((saved) => {
+// storage can fail (private browsing on old Safari): start with the welcome boards rather than a blank page
+loadWorkspace().catch(() => null).then((saved) => {
   store.replace(saved ?? welcomeWorkspace(autoOrientation({ w: window.innerWidth, h: window.innerHeight })));
   // autosave (debounced) and keep other corkboard windows (widget, app) in step
   startAutosave(store, { save: saveWorkspace, load: loadWorkspace, channel: typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('corkboard') : null });

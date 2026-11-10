@@ -44,15 +44,26 @@ const MONTHS: Record<string, number> = {
 };
 const RELATIVE: Record<string, number> = { today: 0, tonight: 0, 'hari ini': 0, 'malam ini': 0, 'nanti malam': 0, tomorrow: 1, tmr: 1, besok: 1, lusa: 2 };
 
-const WEEKDAY_RE = new RegExp(`(?<![\\p{L}])(${Object.keys(WEEKDAYS).sort((a, b) => b.length - a.length).join('|')})(?![\\p{L}])`, 'iu');
+// No lookbehind anywhere in this file: older Safari (iPadOS / iOS before 16.4) can't even load a
+// script that has one. Instead group 1 of every pattern is the character before the match (or the
+// start of the text), and `guarded` steps over it.
+const WEEKDAY_RE = new RegExp(`(^|[^\\p{L}])(${Object.keys(WEEKDAYS).sort((a, b) => b.length - a.length).join('|')})(?![\\p{L}])`, 'iu');
 // "minggu" is Sunday, but also "week": only as "hari minggu" or a heading on its own
-const MINGGU_RE = /(?<![\p{L}])hari\s+minggu(?![\p{L}])/iu;
-const RELATIVE_RE = new RegExp(`(?<![\\p{L}])(${Object.keys(RELATIVE).sort((a, b) => b.length - a.length).join('|')})(?![\\p{L}])`, 'iu');
+const MINGGU_RE = /(^|[^\p{L}])hari\s+minggu(?![\p{L}])/iu;
+const RELATIVE_RE = new RegExp(`(^|[^\\p{L}])(${Object.keys(RELATIVE).sort((a, b) => b.length - a.length).join('|')})(?![\\p{L}])`, 'iu');
 const MONTH_NAMES = Object.keys(MONTHS).sort((a, b) => b.length - a.length).join('|');
-const ISO_RE = /(?<!\d)(\d{4})-(\d{1,2})-(\d{1,2})(?!\d)/;
-const SLASH_RE = /(?<![\d.:/])(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?(?![\d/])/;
-const DAY_MONTH_RE = new RegExp(`(?<!\\d)(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTH_NAMES})\\.?(?:\\s+(\\d{4}))?(?![\\p{L}])`, 'iu');
-const MONTH_DAY_RE = new RegExp(`(?<![\\p{L}])(${MONTH_NAMES})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?(?!\\d)`, 'iu');
+const ISO_RE = /(^|\D)(\d{4})-(\d{1,2})-(\d{1,2})(?!\d)/;
+const SLASH_RE = /(^|[^\d.:/])(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?(?![\d/])/;
+const DAY_MONTH_RE = new RegExp(`(^|\\D)(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTH_NAMES})\\.?(?:\\s+(\\d{4}))?(?![\\p{L}])`, 'iu');
+const MONTH_DAY_RE = new RegExp(`(^|[^\\p{L}])(${MONTH_NAMES})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?(?!\\d)`, 'iu');
+
+/** exec a pattern whose group 1 is the guard character; the span starts after it */
+function guarded(re: RegExp, s: string): (RegExpExecArray & { start: number; span: number }) | null {
+  const m = re.exec(s);
+  if (!m) return null;
+  const g = m[1].length;
+  return Object.assign(m, { start: m.index + g, span: m[0].length - g });
+}
 
 interface Span {
   index: number;
@@ -66,16 +77,19 @@ export function findTime(line: string): (Span & { h: number; m: number }) | null
     const pm = s[0].toLowerCase() === 'p';
     return pm ? (h % 12) + 12 : h % 12;
   };
-  let m = /(?:(?<![\p{L}])(?:jam|pukul|at|@)\s*)?(?<![\d.:/,])([01]?\d|2[0-3])[.:]([0-5]\d)(?:\s*([ap])\.?m\.?)?(?![\d.:]\d|\d)/iu.exec(line);
+  // 10.00 · 10:00 · 7.30 pm · at 9:15 · jam 10.30
+  let m = guarded(/(^|[^\p{L}\d.:/,])((?:(?:jam|pukul|at)\s*|@\s*)?)([01]?\d|2[0-3])[.:]([0-5]\d)(?:\s*([ap])\.?m\.?)?(?![\d.:]\d|\d)/iu, line);
   if (m) {
-    const h = Number(m[1]);
-    if (m[3] && (h < 1 || h > 12)) return null;
-    return { index: m.index, length: m[0].length, h: ampm(h, m[3]), m: Number(m[2]) };
+    const h = Number(m[3]);
+    if (m[5] && (h < 1 || h > 12)) return null;
+    return { index: m.start, length: m.span, h: ampm(h, m[5]), m: Number(m[4]) };
   }
-  m = /(?:(?<![\p{L}])(?:at|@)\s*)?(?<![\d.:/,])(1[0-2]|0?[1-9])\s*([ap])\.?m\.?(?![\p{L}])/iu.exec(line);
-  if (m) return { index: m.index, length: m[0].length, h: ampm(Number(m[1]), m[2]), m: 0 };
-  m = /(?<![\p{L}])(?:jam|pukul)\s+([01]?\d|2[0-3])(?![\d.:])/iu.exec(line);
-  if (m) return { index: m.index, length: m[0].length, h: Number(m[1]), m: 0 };
+  // 3pm · 10 am · @ 9am
+  m = guarded(/(^|[^\p{L}\d.:/,])((?:at\s*|@\s*)?)(1[0-2]|0?[1-9])\s*([ap])\.?m\.?(?![\p{L}])/iu, line);
+  if (m) return { index: m.start, length: m.span, h: ampm(Number(m[3]), m[4]), m: 0 };
+  // jam 10 · pukul 7
+  m = guarded(/(^|[^\p{L}])((?:jam|pukul)\s+)([01]?\d|2[0-3])(?![\d.:])/iu, line);
+  if (m) return { index: m.start, length: m.span, h: Number(m[3]), m: 0 };
   return null;
 }
 
@@ -102,41 +116,42 @@ function fullDate(y: number, month: number, day: number): Date | null {
 
 /** A day mentioned in the text: today, tomorrow, a weekday or a date. */
 export function findDay(text: string, now: Date, heading = false): (Span & { date: Date }) | null {
-  let m = ISO_RE.exec(text);
+  let m = guarded(ISO_RE, text);
   if (m) {
-    const d = fullDate(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    if (d) return { index: m.index, length: m[0].length, date: d };
+    const d = fullDate(Number(m[2]), Number(m[3]) - 1, Number(m[4]));
+    if (d) return { index: m.start, length: m.span, date: d };
   }
-  m = DAY_MONTH_RE.exec(text);
+  m = guarded(DAY_MONTH_RE, text);
+  if (m) {
+    const month = MONTHS[m[3].toLowerCase()];
+    const d = m[4] ? fullDate(Number(m[4]), month, Number(m[2])) : dateWithoutYear(month, Number(m[2]), now);
+    if (d) return { index: m.start, length: m.span, date: d };
+  }
+  m = guarded(MONTH_DAY_RE, text);
   if (m) {
     const month = MONTHS[m[2].toLowerCase()];
-    const d = m[3] ? fullDate(Number(m[3]), month, Number(m[1])) : dateWithoutYear(month, Number(m[1]), now);
-    if (d) return { index: m.index, length: m[0].length, date: d };
+    const d = m[4] ? fullDate(Number(m[4]), month, Number(m[3])) : dateWithoutYear(month, Number(m[3]), now);
+    if (d) return { index: m.start, length: m.span, date: d };
   }
-  m = MONTH_DAY_RE.exec(text);
-  if (m) {
-    const month = MONTHS[m[1].toLowerCase()];
-    const d = m[3] ? fullDate(Number(m[3]), month, Number(m[2])) : dateWithoutYear(month, Number(m[2]), now);
-    if (d) return { index: m.index, length: m[0].length, date: d };
-  }
-  m = SLASH_RE.exec(text);
+  m = guarded(SLASH_RE, text);
   if (m) {
     // day/month, the way it's written in Indonesia and most of the world
-    const day = Number(m[1]);
-    const month = Number(m[2]) - 1;
-    const d = m[3] ? fullDate(Number(m[3]), month, day) : dateWithoutYear(month, day, now);
-    if (d) return { index: m.index, length: m[0].length, date: d };
+    const day = Number(m[2]);
+    const month = Number(m[3]) - 1;
+    const d = m[4] ? fullDate(Number(m[4]), month, day) : dateWithoutYear(month, day, now);
+    if (d) return { index: m.start, length: m.span, date: d };
   }
-  m = RELATIVE_RE.exec(text);
+  m = guarded(RELATIVE_RE, text);
   if (m) {
     const d = startOfDay(now);
-    d.setDate(d.getDate() + RELATIVE[m[1].toLowerCase()]);
-    return { index: m.index, length: m[0].length, date: d };
+    d.setDate(d.getDate() + RELATIVE[m[2].toLowerCase()]);
+    return { index: m.start, length: m.span, date: d };
   }
-  m = WEEKDAY_RE.exec(text);
-  if (m) return { index: m.index, length: m[0].length, date: nextWeekday(WEEKDAYS[m[1].toLowerCase()], now) };
-  m = MINGGU_RE.exec(text) ?? (heading ? /^minggu$/i.exec(text.trim()) : null);
-  if (m) return { index: m.index, length: m[0].length, date: nextWeekday(0, now) };
+  m = guarded(WEEKDAY_RE, text);
+  if (m) return { index: m.start, length: m.span, date: nextWeekday(WEEKDAYS[m[2].toLowerCase()], now) };
+  m = guarded(MINGGU_RE, text);
+  if (m) return { index: m.start, length: m.span, date: nextWeekday(0, now) };
+  if (heading && /^minggu$/i.test(text.trim())) return { index: text.indexOf(text.trim()), length: text.trim().length, date: nextWeekday(0, now) };
   return null;
 }
 
@@ -159,7 +174,7 @@ function clean(s: string): string {
   return s
     .replace(/\s{2,}/g, ' ')
     .replace(/^[\s,;:@–—-]+|[\s,;:@–—-]+$/g, '')
-    .replace(/(?<![\p{L}])(?:at|on|jam|pukul|hari)$/iu, '')
+    .replace(/(^|[^\p{L}])(?:at|on|jam|pukul|hari)$/iu, '$1')
     .replace(/^(?:at|on|jam|pukul)(?![\p{L}])/iu, '')
     .trim();
 }

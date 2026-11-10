@@ -37,8 +37,9 @@ export default defineConfig({
       },
     }),
   ],
-  // pdf.js, docx and jsPDF are split into lazy chunks that only load on import/export
-  build: { chunkSizeWarningLimit: 1500 },
+  // pdf.js, docx and jsPDF are split into lazy chunks that only load on import/export.
+  // safari14: older iPads (iPadOS 14–16) parse the app too; newer syntax would leave them a blank page
+  build: { chunkSizeWarningLimit: 1500, target: ['es2020', 'safari14', 'chrome87', 'edge88', 'firefox78'] },
   test: {
     environment: 'jsdom',
     include: ['tests/**/*.test.ts'],

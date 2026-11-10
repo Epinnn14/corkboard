@@ -7,11 +7,24 @@
     <meta name="theme-color" content="#2b2620" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="corkboard" />
     <meta name="description" content="A cork board in your browser: pin sticky notes, index cards, lined paper and photos." />
     <title>Corkboard</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <p id="boot" style="font: 16px/1.5 -apple-system, 'Segoe UI', sans-serif; color: #2b2620; text-align: center; padding: 40vh 24px 0; margin: 0">
+        Loading corkboard…
+      </p>
+    </div>
+    <script>
+      // if the app can't start (a very old browser), say so instead of leaving a blank page
+      setTimeout(function () {
+        var b = document.getElementById('boot');
+        if (b) b.innerHTML = 'corkboard couldn’t start in this browser.<br />Update your iPhone / iPad (Settings → General → Software Update) or use the latest Safari, Chrome or Edge.';
+      }, 10000);
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
