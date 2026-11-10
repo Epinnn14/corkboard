@@ -127,8 +127,32 @@ function widgetBounds(w, h) {
   return { x: a.x + a.width - w - 24, y: a.y + 24, width: w, height: h };
 }
 
-function createWidget() {
-  if (widget && !widget.isDestroyed()) return widget.show();
+/** Top-right corner of the main screen. */
+function topRight(w, h) {
+  const a = screen.getPrimaryDisplay().workArea;
+  return { x: a.x + a.width - w - 24, y: a.y + 24, width: w, height: h };
+}
+
+/**
+ * Show the widget. `atCorner` (pressing "Show the widget") puts it in the
+ * top-right corner; at login it comes back where you left it.
+ */
+function createWidget(atCorner = false) {
+  if (widget && !widget.isDestroyed()) {
+    if (atCorner) {
+      const [w, h] = widget.getSize();
+      widget.setBounds(topRight(w, h));
+      settings.bounds = null;
+      saveSettings();
+    }
+    widget.showInactive();
+    widget.moveTop();
+    return;
+  }
+  if (atCorner) {
+    settings.bounds = null;
+    saveSettings();
+  }
   widget = new BrowserWindow({
     ...widgetBounds(SIZE.w, SIZE.h),
     frame: false,
@@ -171,7 +195,8 @@ function rebuildTray() {
       { label: 'Open corkboard', click: () => openApp() },
       { label: 'Customize the widget…', click: () => openApp('desk') },
       { type: 'separator' },
-      { label: 'Show the widget', type: 'checkbox', checked: settings.widget, click: (i) => setSettings({ widget: i.checked }) },
+      { label: 'Show the widget (top right)', click: () => showWidget() },
+      { label: 'Widget on the desktop', type: 'checkbox', checked: settings.widget, click: (i) => setSettings({ widget: i.checked }) },
       { label: 'Keep the widget on top', type: 'checkbox', checked: settings.onTop, click: (i) => setSettings({ onTop: i.checked }) },
       { label: 'Start with Windows', type: 'checkbox', checked: settings.startup, click: (i) => setSettings({ startup: i.checked }) },
       { type: 'separator' },
@@ -195,7 +220,7 @@ function setSettings(patch) {
   if (typeof patch.startup === 'boolean') settings.startup = patch.startup;
   saveSettings();
   if (settings.startup !== before.startup) applyStartup();
-  if (settings.widget !== before.widget) settings.widget ? createWidget() : destroyWidget();
+  if (settings.widget !== before.widget) settings.widget ? createWidget(true) : destroyWidget();
   if (settings.onTop !== before.onTop && widget) widget.setAlwaysOnTop(settings.onTop);
   rebuildTray();
   broadcastSettings();
@@ -205,17 +230,29 @@ function setSettings(patch) {
 ipcMain.handle('cb:get-settings', () => publicSettings());
 ipcMain.handle('cb:set-settings', (_e, patch) => setSettings(patch ?? {}));
 ipcMain.on('cb:open-app', (_e, view) => openApp(view));
+ipcMain.on('cb:show-widget', () => showWidget());
+
+/** "Show the widget": switch it on if it was off, and bring it to the top-right corner. */
+function showWidget() {
+  if (!settings.widget) {
+    setSettings({ widget: true });
+    return;
+  }
+  createWidget(true);
+}
+
 ipcMain.on('cb:resize-widget', (e, w, h) => {
   if (!widget || e.sender !== widget.webContents) return;
-  const width = Math.round(Math.min(Math.max(Number(w) || SIZE.w, 240), 1200));
-  const height = Math.round(Math.min(Math.max(Number(h) || SIZE.h, 160), 1000));
+  // from one sticky note (220 × 220) up to the whole screen
+  const a = screen.getDisplayMatching(widget.getBounds()).workArea;
+  const width = Math.round(Math.min(Math.max(Number(w) || SIZE.w, 220), a.width));
+  const height = Math.round(Math.min(Math.max(Number(h) || SIZE.h, 220), a.height));
   // grow and shrink from the top-right corner, then keep it on its screen
   const [x, y] = widget.getPosition();
   const [oldW] = widget.getSize();
   const right = x + oldW;
-  const a = screen.getDisplayMatching(widget.getBounds()).workArea;
-  const nx = Math.min(Math.max(right - width, a.x), a.x + a.width - Math.min(width, a.width));
-  const ny = Math.min(Math.max(y, a.y), a.y + a.height - Math.min(height, a.height));
+  const nx = Math.min(Math.max(right - width, a.x), a.x + a.width - width);
+  const ny = Math.min(Math.max(y, a.y), a.y + a.height - height);
   widget.setBounds({ x: nx, y: ny, width, height });
 });
 
