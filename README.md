@@ -97,6 +97,12 @@ New boards come blank or from a template:
 
 ## How to use it
 
+The first time you open corkboard you see all its boards: **Start here** (what corkboard is, and a *How to use* note),
+a **Weekly planner** already filled in (its times are in the Agenda and the widget straight away, so you can see how it
+works) and a **Kanban**. Change them, or delete them with the board's *Delete* button.
+
+![First open: Start here, a filled-in Weekly planner and a Kanban](docs/boards.jpg)
+
 | | |
 |---|---|
 | Add a note | double-click the board, or use the dock at the bottom |
@@ -105,7 +111,9 @@ New boards come blank or from a template:
 | Pan / zoom | drag empty space · scroll wheel or pinch · `+` `−` · `0` shows everything |
 | Change a note | select it: colour, tape/pin, duplicate, remove |
 | Undo | the toast's **Undo**, or `Ctrl/⌘ + Z` (notes, cleared boards and deleted boards) |
+| Plan with times | write the time next to the thing: `gym 18.00`, under a `MONDAY` heading or with a day (`fri 3pm`); it's in the Agenda and the widget, and rings at the time |
 | Dates | select a note → 📅: pick a day and time, a reminder (at time, 10 min, 1 h, 1 day before); tap the chip to tick it done |
+| Tick things off | the checkbox in the Agenda or the circle on the widget: the line gets crossed out |
 | Keys | `N` new sticky · `B` new board · `A` agenda · `Delete` remove · `Esc` deselect |
 | Keep / share | **Save** downloads the current board as a PNG · the **+** menu has New board, Import and Export (below) |
 
@@ -130,8 +138,6 @@ New boards come blank or from a template:
   a mini board) and a style (Cork, Paper, Dark), with a live preview. Get it on your desktop with the
   [Windows app](#windows-app-the-desktop-widget), or *Open widget* in a small browser window.
 - **Widget mode** (`#widget`): the same widget in the current window, handy from the home-screen shortcut on a phone.
-- **Wallpaper pictures** (in the **+** menu): *Desktop wallpaper* (2560×1440) and *Phone wallpaper* (1170×2532, with the top
-  third left clear for the lock-screen clock), so the whole board fits instead of being cropped.
 
 ## Import & export
 
@@ -159,7 +165,7 @@ plus every note as searchable text) · plain text · Markdown (for Notion/Obsidi
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 93 tests
+npm test          # 94 tests
 npm run build     # static site in dist/ (relative paths, host it anywhere)
 ```
 
@@ -196,7 +202,6 @@ src/
 │   ├── sync.ts           autosave + keeping several corkboard windows in step (BroadcastChannel)
 │   ├── install.ts        device/browser detection and install steps
 │   ├── notify.ts         system notifications (through the service worker when installed)
-│   ├── wallpaper.ts      desktop and phone wallpaper layouts
 │   ├── texture.ts        cork, felt, linen and dot-grid surfaces painted on a canvas
 │   └── storage.ts        IndexedDB persistence
 ├── stores/workspace.ts   Pinia: boards, notes, cross-board drops, undo
