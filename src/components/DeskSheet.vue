@@ -47,12 +47,17 @@ watch(cfg, () => (wallLink.value = ''), { deep: true });
 
 // the board itself as the wallpaper, editable
 const wallBoardId = ref<string | null>(defaultWallBoard(props.boards, null)?.id ?? null);
-const boardLink = ref('');
+const bringAlong = ref(false);
+const boardLink = ref(base() + wallHash(null));
 const boardCopied = ref(false);
-async function copyBoardWall() {
+async function boardWallLink(): Promise<string> {
   const b = props.boards.find((x) => x.id === wallBoardId.value);
-  if (!b) return;
-  boardLink.value = base() + wallHash(b.id, 'light', await encodeSnapshot(boardSnapshot(b)));
+  if (!bringAlong.value || !b) return base() + wallHash(null);
+  return base() + wallHash(b.id, 'light', await encodeSnapshot(boardSnapshot(b)));
+}
+watch([bringAlong, wallBoardId], async () => (boardLink.value = await boardWallLink()));
+async function copyBoardWall() {
+  boardLink.value = await boardWallLink();
   try {
     await navigator.clipboard.writeText(boardLink.value);
     boardCopied.value = true;
@@ -61,7 +66,6 @@ async function copyBoardWall() {
     boardCopied.value = false;
   }
 }
-watch(wallBoardId, () => (boardLink.value = ''));
 
 const previewCfg = computed(() => ({ ...cfg.value, wall: false }));
 
@@ -89,28 +93,41 @@ const pscale = computed(() => Math.min(1, (pw.value.w - 16) / win.value.w, (pw.v
 
       <article class="desk-way desk-board-wall">
         <div>
-          <h3>🖼️ Your board as the wallpaper</h3>
+          <h3>🖼️ Your board as the real wallpaper</h3>
           <p>
-            Just the board on a plain background, full screen. Click a note to write, drag it, double-click to add one.
-            Everything else hides in one round 📌 button at the bottom right.
+            The board sits behind your desktop icons, on a plain background, and you edit it right there: click a note
+            to write, drag it, double-click the cork to add one. Everything else hides in one round 📌 button.
           </p>
-          <label class="desk-board">
-            <span>Board</span>
-            <select v-model="wallBoardId" data-field="wall-board">
+          <p class="desk-step"><b>1.</b> Get <b>Lively Wallpaper</b> (free, Microsoft Store), press <b>+</b>, paste this link:</p>
+          <div class="desk-linkrow">
+            <input class="desk-link" readonly :value="boardLink" data-field="wall-link" @focus="($event.target as HTMLInputElement).select()" />
+            <button class="solid" data-action="board-wall-copy" @click="copyBoardWall">{{ boardCopied ? 'Copied ✓' : 'Copy' }}</button>
+          </div>
+          <label class="desk-check">
+            <input v-model="bringAlong" type="checkbox" data-field="wall-bring" />
+            Start it with a copy of
+            <select v-model="wallBoardId" data-field="wall-board" :disabled="!bringAlong">
               <option v-for="b in boards" :key="b.id" :value="b.id">{{ b.title }}</option>
             </select>
           </label>
-          <button class="solid" data-action="board-wall-open" @click="emit('wall', wallBoardId)">Open full screen</button>
-          <button class="ghost" data-action="board-wall-copy" @click="copyBoardWall">
-            {{ boardCopied ? 'Link copied ✓' : 'Copy link for Lively' }}
-          </button>
-          <input v-if="boardLink && !boardCopied" class="desk-link" readonly :value="boardLink" @focus="($event.target as HTMLInputElement).select()" />
+          <p class="desk-step">
+            <b>2.</b> In Lively: <i>Settings → Wallpaper → Interaction → Wallpaper input</i>: <b>Mouse</b>, and
+            <b>Keyboard</b> to type on it.
+          </p>
+          <p class="desk-step"><b>3.</b> Optional: right-click the desktop → <i>View</i> → untick <i>Show desktop icons</i> for a clean board.</p>
         </div>
-        <p class="desk-tip">
-          <b>Full screen</b> is the same corkboard as here (saved together, reminders on). Press <b>F11</b> or 📌 → Full screen.<br />
-          <b>Lively:</b> paste the link with <b>+</b>, and set Lively's wallpaper input to <i>Mouse</i> so clicks reach the
-          board. Lively keeps its own copy of the board, so what you change on the wallpaper stays on the wallpaper.
-        </p>
+        <div class="desk-tip">
+          <p>
+            <b>Good to know:</b> Lively shows web pages with its own built-in browser, so the wallpaper keeps
+            <b>its own</b> boards, saved inside Lively. Notes you write on the wallpaper stay on the wallpaper; this app
+            window keeps its own. Without the copy, the wallpaper starts with a fresh Weekly planner.
+          </p>
+          <p>
+            <b>Same boards as here instead?</b> Open the board full screen in its own window (saved together, reminders on),
+            then press <b>F11</b>.
+          </p>
+          <button class="ghost" data-action="board-wall-open" @click="emit('wall', wallBoardId)">Open full screen</button>
+        </div>
       </article>
 
       <h3 class="desk-or">Or a widget with just what you need</h3>

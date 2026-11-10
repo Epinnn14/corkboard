@@ -98,8 +98,12 @@ New boards come blank or from a template:
 - **Your board as the wallpaper** (**+** → *Add to desktop*, or open `#wall`): just one board (your Weekly planner
   by default) on a plain background, filling the screen and fully editable: click a note to write, drag it,
   double-click to add one. Everything else hides in one round 📌 button at the bottom right (add notes, agenda,
-  another board, light/dark background, full screen, open the full app). *Open full screen* shares the same data
-  and reminders; *Copy link for Lively* puts it behind your desktop icons (Lively keeps its own copy of the board).
+  another board, light/dark background, full screen, open the full app).
+  - **As the real wallpaper:** in [Lively Wallpaper](https://github.com/Lively-wallpaper/lively) press **+** and paste
+    `https://epinnn14.github.io/corkboard/#wall`, then *Settings → Wallpaper → Interaction → Wallpaper input*:
+    Mouse (and Keyboard to type). The board sits behind your desktop icons and you edit it right there, no export.
+    Lively has its own built-in browser, so the wallpaper keeps its own boards (optionally starting from a copy of one).
+  - **Same boards as the app:** *Open full screen* opens it in its own window (saved together, reminders on); press F11.
 - **Add to desktop** (in the **+** menu): pick what to show (date & clock, today's reminders, the coming 7 days,
   a mini board) and a style (Sticky, Paper, Dark), with a live preview. Then either
   - **Open widget**: a small corkboard window for your desktop. Set it to start with Windows

@@ -354,7 +354,7 @@ describe('board wallpaper (#wall)', () => {
     wrapper.unmount();
   });
 
-  it('Add to desktop opens it full screen, or copies a Lively link that brings the board along', async () => {
+  it('Add to desktop: a ready Lively link (optionally bringing the board along) or full screen', async () => {
     localStorage.clear();
     const store = useWorkspace();
     store.replace({ version: 2, boards: [], camera: null });
@@ -368,9 +368,16 @@ describe('board wallpaper (#wall)', () => {
     await wrapper.find('.bar .solid.plus').trigger('click');
     await wrapper.find('[data-action=desk]').trigger('click');
     expect((wrapper.find('[data-field=wall-board]').element as HTMLSelectElement).value).toBe(planner.id);
+    // no export needed: the plain link is ready to paste into Lively
+    expect((wrapper.find('[data-field=wall-link]').element as HTMLInputElement).value).toMatch(/\/#wall$/);
     await wrapper.find('[data-action=board-wall-copy]').trigger('click');
-    await vi.waitFor(() => expect(writeText).toHaveBeenCalled());
-    const link = writeText.mock.calls[0][0] as string;
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(writeText.mock.calls[0][0]).toMatch(/\/#wall$/);
+    // optionally start the wallpaper with a copy of this board
+    await wrapper.find('[data-field=wall-bring]').setValue(true);
+    await wrapper.find('[data-action=board-wall-copy]').trigger('click');
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+    const link = writeText.mock.calls[1][0] as string;
     expect(link).toMatch(new RegExp(`#wall\\?board=${planner.id}&snap=z`));
     await wrapper.find('[data-action=board-wall-open]').trigger('click');
     expect(open.mock.calls[0][0]).toMatch(new RegExp(`#wall\\?board=${planner.id}$`));

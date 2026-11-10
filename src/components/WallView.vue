@@ -20,15 +20,20 @@ const view = ref({ w: window.innerWidth, h: window.innerHeight });
 let ro: ResizeObserver | undefined;
 onMounted(() => {
   if (typeof ResizeObserver === 'undefined' || !root.value) return;
-  ro = new ResizeObserver(([e]) => (view.value = { w: e.contentRect.width, h: e.contentRect.height }));
+  // border box: the taskbar padding below must not change what we measure
+  ro = new ResizeObserver(() => root.value && (view.value = { w: root.value.offsetWidth, h: root.value.offsetHeight }));
   ro.observe(root.value);
 });
 onBeforeUnmount(() => ro?.disconnect());
 
+// Filling the whole monitor (a Lively wallpaper, or F11): leave room for the taskbar.
+const screenH = () => window.screen?.height ?? 0;
+const covered = computed(() => screenH() > 0 && view.value.h >= screenH() - 2);
 const fit = computed(() => {
   const r = boardRect(props.board);
   const m = Math.min(48, view.value.w * 0.04);
-  const s = Math.max(0.1, Math.min((view.value.w - m * 2) / r.w, (view.value.h - m * 2) / r.h));
+  const bottom = covered.value ? 64 : 0;
+  const s = Math.max(0.1, Math.min((view.value.w - m * 2) / r.w, (view.value.h - m * 2 - bottom) / r.h));
   return { s, x: r.x, y: r.y, w: r.w * s, h: r.h * s };
 });
 provide('scale', computed(() => fit.value.s));
@@ -84,7 +89,7 @@ function onBackdrop(e: PointerEvent) {
 </script>
 
 <template>
-  <div ref="root" class="wallview" :class="`bg-${bg}`" @pointerdown="onBackdrop">
+  <div ref="root" class="wallview" :class="[`bg-${bg}`, { covered }]" @pointerdown="onBackdrop">
     <div class="wv-stage" :style="{ width: `${fit.w}px`, height: `${fit.h}px` }">
       <div class="wv-scaled" :style="{ transform: `scale(${fit.s}) translate(${-fit.x}px, ${-fit.y}px)` }">
         <BoardView :board="board" />
@@ -145,6 +150,8 @@ function onBackdrop(e: PointerEvent) {
   overflow: hidden;
   background: radial-gradient(120% 90% at 50% 40%, #f3eee5, #e3dccf);
 }
+.wallview.covered { padding-bottom: 64px; }
+.covered .fab-wrap { bottom: 72px; }
 .bg-dark { background: radial-gradient(120% 90% at 50% 40%, #2c2925, #161412); }
 .wv-stage { position: relative; }
 .wv-scaled { position: absolute; left: 0; top: 0; transform-origin: 0 0; }

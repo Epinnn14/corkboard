@@ -342,9 +342,15 @@ button { font: inherit; cursor: pointer; }
 .desk-window { position: absolute; left: 50%; top: 50%; transform-origin: 50% 50%; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12), 0 18px 40px rgba(0, 0, 0, 0.25); }
 .desk-or { margin: 22px 0 12px; font-size: 17px; }
 .desk-board-wall { margin-top: 0; display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; background: #fffbe0; border-color: rgba(43, 38, 32, 0.2); }
-.desk-board-wall .desk-board { margin: 6px 0 10px; }
-.desk-board-wall .ghost { margin-left: 6px; border-radius: 999px; padding: 8px 14px; }
-.desk-board-wall .desk-tip { margin: 0; align-self: center; }
+.desk-board-wall .ghost { border-radius: 999px; padding: 8px 14px; background: #fff; }
+.desk-board-wall .desk-tip { margin: 0; align-self: center; background: rgba(255, 255, 255, 0.6); border-radius: 12px; padding: 10px 12px; }
+.desk-board-wall .desk-tip p { margin: 0 0 8px; }
+.desk-step { margin: 8px 0 6px !important; font-size: 13.5px; }
+.desk-linkrow { display: flex; gap: 6px; align-items: center; }
+.desk-linkrow .desk-link { margin: 0; flex: 1; min-width: 0; background: #fff; }
+.desk-check { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 8px 0 4px; font-size: 13px; color: rgba(43, 38, 32, 0.75); }
+.desk-check select { font: inherit; border: 1px solid rgba(43, 38, 32, 0.2); border-radius: 8px; padding: 3px 6px; background: #fff; color: var(--ink); }
+.desk-check select:disabled { opacity: 0.5; }
 .desk-ways { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
 .desk-way { border: 1px solid rgba(43, 38, 32, 0.12); background: #fff; border-radius: 16px; padding: 14px 16px; }
 .desk-way h3 { margin: 0 0 4px; font-size: 16px; }
