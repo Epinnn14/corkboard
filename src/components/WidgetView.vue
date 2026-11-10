@@ -275,6 +275,8 @@ function pick(fn: () => void) {
         </section>
       </div>
     </div>
+    <!-- the Windows app's widget moves by its top middle, whatever size it is -->
+    <span v-if="desk" class="w-drag" title="Drag to move" data-action="widget-move" aria-hidden="true"><i /></span>
     <span
       v-if="desk"
       class="w-grip"
@@ -496,6 +498,34 @@ h3 { margin: 0 0 8px; font-size: 11.5px; letter-spacing: 0.12em; text-transform:
 .pick { display: flex; justify-content: flex-end; }
 .pick select { font: inherit; font-size: 13px; border: 0; border-radius: 999px; padding: 4px 10px; background: rgba(255, 253, 248, 0.92); color: #2b2620; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); }
 
+/* the move handle, top middle (Windows app): a strip the window is dragged by */
+.w-drag {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(160px, 46%);
+  height: 30px;
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  -webkit-app-region: drag;
+  z-index: 28;
+}
+.w-drag i {
+  width: 46px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(43, 38, 32, 0.35);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.widget:hover .w-drag i { opacity: 1; }
+.th-dark .w-drag i, .th-bare .w-drag i { background: rgba(255, 255, 255, 0.6); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
+/* the push pins sit under the handle: keep them visible but let the handle take the press */
+.desk .w-pin, .desk .cal-pin { pointer-events: none; }
+
 /* the resize grip, bottom-left (Windows app) */
 .w-grip {
   position: absolute;
@@ -530,6 +560,7 @@ h3 { margin: 0 0 8px; font-size: 11.5px; letter-spacing: 0.12em; text-transform:
 @container (max-height: 300px) {
   .w-head { display: none; }
   .panel { padding-top: 16px; }
+  .w-lists > section:first-child h3 { padding-right: 34px; }
 }
 @container (max-width: 560px) and (max-height: 640px) {
   .wide .mini { display: none; }
