@@ -26,10 +26,13 @@ function boards(): Board[] {
 
 describe('widget settings', () => {
   it('round-trips through the hash and falls back to the saved default', () => {
-    const c = { parts: ['today', 'board'] as ('today' | 'board')[], theme: 'dark' as const, boardId: 'b1' };
+    const c = { parts: ['today', 'board'] as ('today' | 'board')[], theme: 'dark' as const, boardId: 'b1', size: null };
     const h = deskHash(c);
     expect(h).toBe('#widget?show=today%2Cboard&theme=dark&board=b1');
     expect(parseDeskHash(h)).toEqual({ config: c, custom: true });
+    const sized = { ...c, theme: 'bare' as const, size: { w: 500, h: 320 } };
+    expect(deskHash(sized)).toBe('#widget?show=today%2Cboard&theme=bare&board=b1&w=500&h=320');
+    expect(parseDeskHash(deskHash(sized)).config).toEqual(sized);
     const saved = { ...DEFAULT_DESK, theme: 'paper' as const };
     expect(parseDeskHash('#widget', saved)).toEqual({ config: saved, custom: false });
   });
@@ -38,6 +41,13 @@ describe('widget settings', () => {
     expect(sanitizeDesk({ parts: ['nope'] as never, theme: 'neon' as never })).toEqual(DEFAULT_DESK);
     expect(sanitizeDesk({ theme: 'sticky' as never }).theme).toBe('cork');
     expect(parseDeskHash('#widget?show=week,clock,week&theme=x').config.parts).toEqual(['clock', 'week']);
+  });
+
+  it('any size from one sticky note (220 × 220) up', () => {
+    expect(sanitizeDesk({ size: { w: 50, h: 9000 } }).size).toEqual({ w: 220, h: 3000 });
+    expect(sanitizeDesk({ size: { w: 'x', h: 2 } as never }).size).toBeNull();
+    expect(deskWindowSize({ parts: ['clock'], size: { w: 1500, h: 900 } })).toEqual({ w: 1500, h: 900 });
+    expect(parseDeskHash('#widget?show=today&w=100&h=100').config.size).toEqual({ w: 220, h: 220 });
   });
 
   it('window size follows what it shows', () => {

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue';
 import type { Board } from '../core/board';
-import { dueLabel, noteTitle } from '../core/dates';
-import { type DeskConfig, type DeskItem, deskLists, greeting } from '../core/desk';
+import { dueLabel } from '../core/dates';
+import { DESK_MIN, type DeskConfig, type DeskItem, deskLists, greeting } from '../core/desk';
 import { surfaceTile } from '../core/texture';
-import { boardRect } from '../core/workspace';
+import { corkRect } from '../core/workspace';
 import { useWorkspace } from '../stores/workspace';
 import BoardView from './BoardView.vue';
 import PushPin from './PushPin.vue';
@@ -35,6 +35,9 @@ const emit = defineEmits<{
   hide: [];
   /** with `fit`: the height it needs */
   natural: [height: number];
+  /** the resize grip (Windows app): live size while dragging, then the final one */
+  resizing: [w: number, h: number];
+  resized: [w: number, h: number];
 }>();
 const store = useWorkspace();
 
@@ -66,7 +69,7 @@ const summary = computed(() => {
 });
 /** short "when": just the time today, the day name later on */
 function when(i: DeskItem) {
-  const label = dueLabel(i.note.due!, clock.value);
+  const label = dueLabel(i.due, clock.value);
   if (i.state === 'today') return label.replace(/^Today /, '');
   if (i.state === 'overdue' && label.startsWith('Today ')) return `late ${label.slice(6)}`;
   return label;
@@ -87,13 +90,14 @@ onMounted(() => {
   if (box.value) ro.observe(box.value);
 });
 onBeforeUnmount(() => ro?.disconnect());
-const fit = computed(() => {
+const miniFit = computed(() => {
   if (!board.value) return { s: 1, x: 0, y: 0, w: 0, h: 0 };
-  const r = boardRect(board.value);
+  // just the cork area: the notes sit straight on the widget, not on a second board
+  const r = corkRect(board.value);
   const s = Math.min(boxSize.value.w / r.w, boxSize.value.h / r.h);
   return { s, x: r.x, y: r.y, w: r.w * s, h: r.h * s };
 });
-provide('scale', computed(() => fit.value.s));
+provide('scale', computed(() => miniFit.value.s));
 
 // report the height the content needs (the Windows app sizes its widget window to it)
 const root = ref<HTMLElement | null>(null);
@@ -105,9 +109,38 @@ onMounted(() => {
 });
 onBeforeUnmount(() => rootRo?.disconnect());
 
+// the resize grip at the bottom-left corner (the window stays anchored at its right edge)
+let grip: { x: number; y: number; w: number; h: number; id: number } | null = null;
+let raf = 0;
+let next: [number, number] | null = null;
+function gripDown(e: PointerEvent) {
+  e.preventDefault();
+  grip = { x: e.screenX, y: e.screenY, w: window.innerWidth, h: window.innerHeight, id: e.pointerId };
+  (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+}
+function gripSize(e: PointerEvent): [number, number] {
+  return [Math.max(DESK_MIN.w, Math.round(grip!.w - (e.screenX - grip!.x))), Math.max(DESK_MIN.h, Math.round(grip!.h + (e.screenY - grip!.y)))];
+}
+function gripMove(e: PointerEvent) {
+  if (!grip || e.pointerId !== grip.id) return;
+  next = gripSize(e);
+  if (!raf) {
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      if (next) emit('resizing', ...next);
+    });
+  }
+}
+function gripUp(e: PointerEvent) {
+  if (!grip || e.pointerId !== grip.id) return;
+  const [w, h] = gripSize(e);
+  grip = null;
+  emit('resized', w, h);
+}
+
 const live = computed(() => !props.preview);
 function tick(i: DeskItem) {
-  if (live.value) store.toggleDone(i.note.id);
+  if (live.value) store.toggleItem(i);
 }
 
 const menuOpen = ref(false);
@@ -118,7 +151,11 @@ function pick(fn: () => void) {
 </script>
 
 <template>
-  <div ref="root" class="widget" :class="[`th-${config.theme}`, { preview, desk, wide: !!board, fit: fit && !board }]">
+  <div
+    ref="root"
+    class="widget"
+    :class="[`th-${config.theme}`, { preview, desk, wide: !!board, fit: fit && !board && !config.size, sized: !!config.size }]"
+  >
     <div class="panel" :style="{ '--cork': cork }">
       <header class="w-head">
         <div v-if="show('clock')" class="cal" aria-label="Today">
@@ -132,20 +169,20 @@ function pick(fn: () => void) {
           <p v-if="show('clock')" class="time">{{ time }}</p>
           <p class="sum" :class="{ late: lists.today.some((i) => i.state === 'overdue') }">{{ summary }}</p>
         </div>
-        <div v-if="!preview" class="w-menu-wrap">
-          <button class="w-menu-btn" aria-label="Widget menu" :aria-expanded="menuOpen" data-action="widget-menu" @click="menuOpen = !menuOpen">
-            ⋯
-          </button>
-          <div v-if="menuOpen" class="w-menu" role="menu">
-            <button role="menuitem" data-action="widget-open" @click="pick(() => emit('open'))">↗ Open corkboard</button>
-            <button role="menuitem" data-action="widget-customize" @click="pick(() => emit('customize'))">🎨 Customize widget</button>
-            <button v-if="desk" role="menuitem" data-action="widget-top" @click="pick(() => emit('on-top', !onTop))">
-              📌 {{ onTop ? 'Stop keeping on top' : 'Keep on top' }}
-            </button>
-            <button v-if="desk" role="menuitem" data-action="widget-hide" @click="pick(() => emit('hide'))">✕ Hide widget</button>
-          </div>
-        </div>
       </header>
+      <div v-if="!preview" class="w-menu-wrap">
+        <button class="w-menu-btn" aria-label="Widget menu" :aria-expanded="menuOpen" data-action="widget-menu" @click="menuOpen = !menuOpen">
+          ⋯
+        </button>
+        <div v-if="menuOpen" class="w-menu" role="menu">
+          <button role="menuitem" data-action="widget-open" @click="pick(() => emit('open'))">↗ Open corkboard</button>
+          <button role="menuitem" data-action="widget-customize" @click="pick(() => emit('customize'))">🎨 Customize widget</button>
+          <button v-if="desk" role="menuitem" data-action="widget-top" @click="pick(() => emit('on-top', !onTop))">
+            📌 {{ onTop ? 'Stop keeping on top' : 'Keep on top' }}
+          </button>
+          <button v-if="desk" role="menuitem" data-action="widget-hide" @click="pick(() => emit('hide'))">✕ Hide widget</button>
+        </div>
+      </div>
 
       <div class="w-body">
         <div v-if="show('today') || show('week')" class="w-lists">
@@ -153,15 +190,15 @@ function pick(fn: () => void) {
             <PushPin class="w-pin" color="yellow" />
             <h3>Today</h3>
             <ul v-if="lists.today.length" class="items">
-              <li v-for="i in cut(lists.today)" :key="i.note.id" :class="i.state">
+              <li v-for="i in cut(lists.today)" :key="i.key" :class="i.state">
                 <button
                   class="tick"
-                  :aria-label="`Mark “${noteTitle(i.note)}” done`"
+                  :aria-label="`Mark “${i.title}” done`"
                   :disabled="!live"
                   data-action="widget-tick"
                   @click="tick(i)"
                 />
-                <button class="what" :disabled="!live" @click="emit('reveal', i.note.id)">{{ noteTitle(i.note) }}</button>
+                <button class="what" :disabled="!live" @click="emit('reveal', i.note.id)">{{ i.title }}</button>
                 <span class="when">{{ when(i) }}</span>
               </li>
               <li v-if="more(lists.today)" class="more">+{{ more(lists.today) }} more</li>
@@ -173,9 +210,9 @@ function pick(fn: () => void) {
             <span class="w-tape" aria-hidden="true" />
             <h3>Coming up</h3>
             <ul v-if="lists.week.length" class="items">
-              <li v-for="i in cut(lists.week)" :key="i.note.id" :class="i.state">
+              <li v-for="i in cut(lists.week)" :key="i.key" :class="i.state">
                 <span class="dot" />
-                <button class="what" :disabled="!live" @click="emit('reveal', i.note.id)">{{ noteTitle(i.note) }}</button>
+                <button class="what" :disabled="!live" @click="emit('reveal', i.note.id)">{{ i.title }}</button>
                 <span class="when">{{ when(i) }}</span>
               </li>
               <li v-if="more(lists.week)" class="more">+{{ more(lists.week) }} more</li>
@@ -186,13 +223,13 @@ function pick(fn: () => void) {
 
         <section v-if="board" class="mini">
           <div ref="box" class="box">
-            <div class="frame" :style="{ width: `${fit.w}px`, height: `${fit.h}px` }">
-              <div class="scaled" :style="{ transform: `scale(${fit.s}) translate(${-fit.x}px, ${-fit.y}px)` }">
+            <div class="frame" :style="{ width: `${miniFit.w}px`, height: `${miniFit.h}px` }">
+              <div class="scaled" :style="{ transform: `scale(${miniFit.s}) translate(${-miniFit.x}px, ${-miniFit.y}px)` }">
                 <BoardView :board="board" />
               </div>
             </div>
           </div>
-          <label v-if="boards.length > 1 && !preview" class="pick">
+          <label v-if="boards.length > 1 && !preview && !desk" class="pick">
             <select id="widget-board" :value="board.id" aria-label="Board" @change="emit('board', ($event.target as HTMLSelectElement).value)">
               <option v-for="b in boards" :key="b.id" :value="b.id">{{ b.title }}</option>
             </select>
@@ -200,6 +237,16 @@ function pick(fn: () => void) {
         </section>
       </div>
     </div>
+    <span
+      v-if="desk"
+      class="w-grip"
+      title="Drag to resize"
+      data-action="widget-resize"
+      @pointerdown="gripDown"
+      @pointermove="gripMove"
+      @pointerup="gripUp"
+      @pointercancel="gripUp"
+    />
   </div>
 </template>
 
@@ -218,6 +265,8 @@ function pick(fn: () => void) {
 }
 .widget.desk { background: transparent; }
 .widget.fit, .fit .panel { height: auto; }
+.widget { container-type: size; position: relative; }
+.widget.fit { container-type: inline-size; }
 
 /* the frame */
 .panel {
@@ -251,6 +300,11 @@ function pick(fn: () => void) {
 }
 .th-dark:not(.desk) { background: radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1.2px) 0 0 / 24px 24px, #121110; }
 .th-dark .panel { background: rgba(24, 22, 20, 0.92); backdrop-filter: blur(18px); border: 1px solid rgba(255, 255, 255, 0.08); }
+/* notes only: no backdrop at all, just the papers on your desktop */
+.th-bare .panel { background: none; box-shadow: none; padding: 12px 8px; }
+.th-bare .hello { background: rgba(255, 253, 248, 0.94); border-radius: 12px; padding: 8px 12px; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2); }
+.th-bare .greet, .th-bare .sum:not(.late) { color: #6b5d4c; }
+.th-bare .w-menu-btn { background: rgba(43, 38, 32, 0.55); }
 
 /* header: calendar page + greeting; it's also the strip that drags the app's widget window */
 .w-head { display: flex; align-items: center; gap: 14px; min-height: 40px; -webkit-app-region: drag; }
@@ -285,7 +339,11 @@ function pick(fn: () => void) {
 .th-cork .sum { color: #6b5d4c; }
 .sum.late { color: #d9412b; }
 
-.w-menu-wrap { position: relative; align-self: flex-start; }
+.w-menu-wrap { position: absolute; top: 12px; right: 12px; z-index: 25; -webkit-app-region: no-drag; }
+.th-cork .w-menu-wrap { top: 6px; right: 6px; }
+.w-head { padding-right: 34px; }
+/* section titles also drag the Windows app's widget (the header hides on small widgets) */
+.desk h3 { -webkit-app-region: drag; }
 .w-menu-btn {
   width: 30px;
   height: 30px;
@@ -319,7 +377,11 @@ function pick(fn: () => void) {
 
 /* body */
 .w-body { flex: 1; min-height: 0; display: flex; gap: 14px; }
-.w-lists { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+/* lists scroll (without a scrollbar) when the widget is smaller than its content */
+.w-lists { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; scrollbar-width: none; padding: 10px 6px 6px; margin: -10px -6px -6px; }
+.w-lists::-webkit-scrollbar { display: none; }
+.fit .w-lists { overflow: visible; }
+.w-today, .w-week { flex: none; }
 .wide .w-lists { flex: 0 0 300px; }
 .w-today, .w-week { position: relative; padding: 16px 14px 12px; color: #2b2620; }
 .w-today { background: var(--sticky); transform: rotate(-0.8deg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 10px 18px rgba(0, 0, 0, 0.16); border-radius: 2px 2px 18px 2px; }
@@ -363,7 +425,11 @@ h3 { margin: 0 0 8px; font-size: 11.5px; letter-spacing: 0.12em; text-transform:
 .overdue .when { color: #d9412b; opacity: 1; }
 .free { margin: 0; font: 22px 'Caveat', cursive; opacity: 0.7; }
 
-.mini { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.mini { flex: 1; min-width: 0; min-height: 120px; display: flex; flex-direction: column; gap: 6px; }
+/* the board's notes sit straight on the widget: no second cork board, no frame */
+.mini :deep(.board) { background: none; box-shadow: none; }
+.mini :deep(.cork) { background: none !important; box-shadow: none !important; overflow: visible; }
+.mini :deep(.empty) { color: var(--muted); }
 .box { flex: 1; min-height: 0; display: grid; place-items: center; }
 .frame { position: relative; overflow: hidden; pointer-events: none; }
 .scaled { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
@@ -371,9 +437,43 @@ h3 { margin: 0 0 8px; font-size: 11.5px; letter-spacing: 0.12em; text-transform:
 .pick { display: flex; justify-content: flex-end; }
 .pick select { font: inherit; font-size: 13px; border: 0; border-radius: 999px; padding: 4px 10px; background: rgba(255, 253, 248, 0.92); color: #2b2620; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); }
 
-@media (max-width: 560px) {
+/* the resize grip, bottom-left (Windows app) */
+.w-grip {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  width: 22px;
+  height: 22px;
+  cursor: nesw-resize;
+  border-radius: 6px;
+  background: linear-gradient(45deg, transparent 0 30%, rgba(0, 0, 0, 0.35) 30% 36%, transparent 36% 50%, rgba(0, 0, 0, 0.35) 50% 56%, transparent 56% 70%, rgba(0, 0, 0, 0.35) 70% 76%, transparent 76%);
+  opacity: 0;
+  transition: opacity 0.15s;
+  -webkit-app-region: no-drag;
+  z-index: 30;
+}
+.widget:hover .w-grip { opacity: 0.8; }
+.th-dark .w-grip { filter: invert(1); }
+
+@container (max-width: 560px) {
   .w-body { flex-direction: column; }
-  .wide .w-lists { flex: none; }
+  .wide .w-lists { flex: 0 1 auto; }
+}
+/* small widgets: first the calendar page goes, then the whole header; the sticky stays */
+@container (max-width: 300px) {
+  .cal { display: none; }
+}
+@container (max-width: 270px) {
+  .what { font-size: 19px; }
+  .when { font-size: 10.5px; }
+  .items li { gap: 6px; }
+}
+@container (max-height: 300px) {
+  .w-head { display: none; }
+  .panel { padding-top: 16px; }
+}
+@container (max-width: 560px) and (max-height: 640px) {
+  .wide .mini { display: none; }
 }
 @media (max-width: 420px) {
   .greet { font-size: 19px; }

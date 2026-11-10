@@ -332,8 +332,15 @@ button { font: inherit; cursor: pointer; }
 .desk-board { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 14px; }
 .desk-board span { color: rgba(43, 38, 32, 0.6); }
 .desk-board select { flex: 1; font: inherit; border: 1px solid rgba(43, 38, 32, 0.2); border-radius: 8px; padding: 6px 8px; background: #fff; color: var(--ink); }
-.desk-themes { display: flex; gap: 6px; }
-.desk-theme { flex: 1; border: 1px solid rgba(43, 38, 32, 0.15); border-radius: 10px; padding: 8px 6px; font-weight: 600; color: var(--ink); }
+.desk-themes { display: flex; gap: 6px; flex-wrap: wrap; }
+.desk-sizes { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.desk-size { border: 1px solid rgba(43, 38, 32, 0.15); background: #fff; border-radius: 999px; padding: 6px 12px; font-weight: 600; color: var(--ink); }
+.desk-size.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.desk-custom { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; font-size: 14px; }
+.desk-custom input { width: 76px; font: inherit; border: 1px solid rgba(43, 38, 32, 0.2); border-radius: 8px; padding: 5px 8px; }
+.desk-custom small { flex-basis: 100%; color: rgba(43, 38, 32, 0.55); font-size: 12px; }
+.dt-bare { background: repeating-linear-gradient(135deg, #f1ece3 0 6px, #e6dfd2 6px 12px); }
+.desk-theme { flex: 1 1 40%; border: 1px solid rgba(43, 38, 32, 0.15); border-radius: 10px; padding: 8px 6px; font-weight: 600; color: var(--ink); }
 .dt-cork { background: #c99a5e linear-gradient(135deg, #d9b07a, #b9864a); color: #fff; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3); }
 .dt-paper { background: #fffdf8; }
 .dt-dark { background: #1e1b18; color: #f6f1e7; }

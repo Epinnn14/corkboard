@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { Board } from '../core/board';
-import { DESK_PARTS, DESK_THEMES, type DeskConfig, type DeskPart, deskWindowSize } from '../core/desk';
+import { clampSize, DESK_MIN, DESK_PARTS, DESK_SIZES, DESK_THEMES, type DeskConfig, type DeskPart, deskWindowSize } from '../core/desk';
 import { desktop, type DesktopSettings, WINDOWS_DOWNLOAD } from '../core/desktop';
 import WidgetView from './WidgetView.vue';
 
@@ -17,6 +17,27 @@ function toggle(p: DeskPart) {
   cfg.value.parts = on
     ? cfg.value.parts.filter((x) => x !== p)
     : DESK_PARTS.map((d) => d.id).filter((id) => id === p || cfg.value.parts.includes(id));
+}
+
+// size: Auto (fits the content), a preset, or any custom size from one sticky note up
+const sizeId = computed(() => {
+  const s = cfg.value.size;
+  if (!s) return 'auto';
+  return DESK_SIZES.find((x) => x.size && x.size.w === s.w && x.size.h === s.h)?.id ?? 'custom';
+});
+function pickSize(id: string) {
+  if (id === 'custom') {
+    cfg.value.size = clampSize(cfg.value.size ?? deskWindowSize({ parts: cfg.value.parts }));
+    customOpen.value = true;
+    return;
+  }
+  customOpen.value = false;
+  cfg.value.size = DESK_SIZES.find((x) => x.id === id)?.size ?? null;
+}
+const customOpen = ref(sizeId.value === 'custom');
+function setCustom(axis: 'w' | 'h', v: string) {
+  const cur = cfg.value.size ?? deskWindowSize({ parts: cfg.value.parts });
+  cfg.value.size = clampSize({ ...cur, [axis]: Number(v) });
 }
 
 // inside the Windows app: the widget lives on the desktop already
@@ -73,6 +94,26 @@ const pscale = computed(() => Math.min(1, (pw.value.w - 20) / win.value.w, (pw.v
               <option v-for="b in boards" :key="b.id" :value="b.id">{{ b.title }}</option>
             </select>
           </label>
+          <p class="desk-label">Size</p>
+          <div class="desk-sizes" role="group" aria-label="Size">
+            <button
+              v-for="z in [...DESK_SIZES, { id: 'custom', label: 'Custom' }]"
+              :key="z.id"
+              class="desk-size"
+              :class="{ on: sizeId === z.id || (z.id === 'custom' && customOpen && sizeId === 'custom') }"
+              :aria-pressed="sizeId === z.id"
+              :data-size="z.id"
+              @click="pickSize(z.id)"
+            >
+              {{ z.label }}
+            </button>
+          </div>
+          <div v-if="sizeId === 'custom' || customOpen" class="desk-custom">
+            <label>W <input type="number" :min="DESK_MIN.w" step="10" :value="cfg.size?.w" data-field="size-w" @change="setCustom('w', ($event.target as HTMLInputElement).value)" /></label>
+            ×
+            <label>H <input type="number" :min="DESK_MIN.h" step="10" :value="cfg.size?.h" data-field="size-h" @change="setCustom('h', ($event.target as HTMLInputElement).value)" /></label>
+            <small>px · smallest {{ DESK_MIN.w }} × {{ DESK_MIN.h }} (one sticky note)</small>
+          </div>
           <p class="desk-label">Style</p>
           <div class="desk-themes">
             <button
@@ -91,11 +132,11 @@ const pscale = computed(() => Math.min(1, (pw.value.w - 20) / win.value.w, (pw.v
             class="desk-window"
             :style="{
               width: `${win.w}px`,
-              height: cfg.parts.includes('board') ? `${win.h}px` : 'auto',
+              height: cfg.parts.includes('board') || cfg.size ? `${win.h}px` : 'auto',
               transform: `translate(-50%, -50%) scale(${pscale})`,
             }"
           >
-            <WidgetView :config="cfg" :boards="boards" preview :fit="!cfg.parts.includes('board')" />
+            <WidgetView :config="cfg" :boards="boards" preview :fit="!cfg.parts.includes('board') && !cfg.size" />
           </div>
         </div>
       </div>
@@ -103,7 +144,11 @@ const pscale = computed(() => Math.min(1, (pw.value.w - 20) / win.value.w, (pw.v
       <div class="desk-ways">
         <article v-if="bridge" class="desk-way" data-card="app-widget">
           <h3>🧩 On your desktop</h3>
-          <p>Changes show on the widget right away. Drag it by its top strip; tick reminders off right on it.</p>
+          <p>
+            Changes show on the widget right away. Drag it by its top strip, resize it from its bottom-left corner, and
+            tick reminders off right on it.
+          </p>
+          <button class="solid" data-action="widget-show" @click="bridge.showWidget()">Show the widget (top right)</button>
           <label class="desk-check">
             <input type="checkbox" :checked="settings?.widget" data-field="widget-on" @change="setSetting({ widget: ($event.target as HTMLInputElement).checked })" />
             Show the widget on my desktop

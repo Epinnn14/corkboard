@@ -261,6 +261,19 @@ describe('desktop widget', () => {
     // the preview can't tick things off
     expect((sheet.find('.desk-preview .w-week .what').element as HTMLButtonElement).disabled).toBe(true);
 
+    // sizes: presets, or custom from one sticky note up
+    await sheet.find('[data-size=s]').trigger('click');
+    expect(sheet.find('.desk-preview .desk-window').attributes('style')).toContain('height: 300px');
+    await sheet.find('[data-size=custom]').trigger('click');
+    await sheet.find('[data-field=size-w]').setValue('150');
+    await sheet.find('[data-field=size-h]').setValue('700');
+    expect(JSON.parse(localStorage.getItem('corkboard:desk')!).size).toEqual({ w: 220, h: 700 });
+    await sheet.find('[data-size=auto]').trigger('click');
+    // notes only: no backdrop, the papers alone
+    await sheet.findAll('.desk-theme')[3].trigger('click');
+    expect(sheet.find('.desk-preview .widget.th-bare').exists()).toBe(true);
+    await sheet.findAll('.desk-theme')[2].trigger('click');
+
     await sheet.find('[data-action=desk-open]').trigger('click');
     const [url, name, features] = open.mock.calls[0] as [string, string, string];
     expect(url).toMatch(/#widget\?show=today%2Cweek%2Cboard&theme=dark&board=/);
@@ -329,6 +342,7 @@ describe('Windows app', () => {
       widget,
       openApp: vi.fn(),
       resizeWidget: vi.fn(),
+      showWidget: vi.fn(),
       getSettings: vi.fn(async () => settings),
       setSettings: vi.fn(async (p: object) => {
         settings = { ...settings, ...p };
@@ -372,6 +386,42 @@ describe('Windows app', () => {
     wrapper.unmount();
   });
 
+  it('the resize grip resizes the window live and remembers the size; Widget mode shows the real widget', async () => {
+    localStorage.clear();
+    window.location.hash = '#widget';
+    const bridge = fakeBridge(true);
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    const proto = Element.prototype as unknown as { setPointerCapture?: unknown };
+    const had = proto.setPointerCapture;
+    proto.setPointerCapture = () => {};
+    const wrapper = mount(App, { attachTo: document.body });
+    const grip = wrapper.find('[data-action=widget-resize]');
+    expect(grip.exists()).toBe(true);
+    // jsdom: 1024 × 768 window; drag the bottom-left grip 900px right and 700px up → clamped to one sticky note
+    grip.element.dispatchEvent(new MouseEvent('pointerdown', { screenX: 0, screenY: 0, bubbles: true }));
+    grip.element.dispatchEvent(new MouseEvent('pointerup', { screenX: 900, screenY: -700, bubbles: true }));
+    await wrapper.vm.$nextTick();
+    expect(JSON.parse(localStorage.getItem('corkboard:desk')!).size).toEqual({ w: 220, h: 220 });
+    expect(bridge.resizeWidget).toHaveBeenLastCalledWith(220, 220);
+    proto.setPointerCapture = had;
+    document.documentElement.classList.remove('cb-desk-widget');
+    clearBridge();
+    window.location.hash = '';
+    wrapper.unmount();
+
+    // in the app window, "+ → Widget mode" brings up the desktop widget instead
+    const b2 = fakeBridge(false);
+    const app = mount(App, { attachTo: document.body });
+    await app.find('.bar .solid.plus').trigger('click');
+    await app.find('[data-action=widget]').trigger('click');
+    expect(b2.showWidget).toHaveBeenCalled();
+    expect(app.find('.bar').exists()).toBe(true);
+    clearBridge();
+    app.unmount();
+  });
+
   it('the app window: widget settings instead of the download; #note= shows a note', async () => {
     const bridge = fakeBridge(false);
     const store = useWorkspace();
@@ -391,6 +441,8 @@ describe('Windows app', () => {
     expect(bridge.setSettings).toHaveBeenCalledWith({ onTop: true });
     await wrapper.find('[data-field=widget-startup]').setValue(false);
     expect(bridge.setSettings).toHaveBeenCalledWith({ startup: false });
+    await wrapper.find('[data-action=widget-show]').trigger('click');
+    expect(bridge.showWidget).toHaveBeenCalled();
     clearBridge();
     wrapper.unmount();
   });
@@ -418,6 +470,30 @@ describe('polaroid', () => {
     expect(click).toHaveBeenCalledTimes(1);
     click.mockRestore();
     proto.setPointerCapture = had;
+    wrapper.unmount();
+  });
+});
+
+describe('agenda from note text', () => {
+  it('times written in a note show up by day and time; ticking crosses them out in the agenda and the note', async () => {
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    const n = store.addNote('index', { text: 'Errands\nbuy milk 10.00\nmeeting 23.59' })!;
+    store.select(null);
+    const wrapper = mount(App, { attachTo: document.body });
+    await wrapper.find('.agenda-btn').trigger('click');
+    const agenda = wrapper.find('.agenda');
+    expect(agenda.findAll('.time').map((t) => t.text())).toEqual(expect.arrayContaining(['10:00', '23:59']));
+    expect(agenda.text()).toContain('from the note');
+    const row = agenda.findAll('li').find((li) => li.text().includes('meeting'))!;
+    await row.find('input[type=checkbox]').setValue(true);
+    expect(store.find(n.id)!.note.text.split('\n')[2]).toBe('m̶e̶e̶t̶i̶n̶g̶ ̶2̶3̶.̶5̶9̶');
+    const again = wrapper.find('.agenda').findAll('li').find((li) => li.text().includes('meeting'))!;
+    expect(again.classes()).toContain('done');
+    expect((again.find('input').element as HTMLInputElement).checked).toBe(true);
+    await again.find('input[type=checkbox]').setValue(false);
+    expect(store.find(n.id)!.note.text.split('\n')[2]).toBe('meeting 23.59');
     wrapper.unmount();
   });
 });

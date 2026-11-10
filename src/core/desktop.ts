@@ -16,8 +16,10 @@ export interface DesktopBridge {
   widget: boolean;
   /** open (or focus) the full corkboard window: 'desk' opens the widget settings there, 'note:<id>' shows that note */
   openApp(view?: 'desk' | `note:${string}`): void;
-  /** fit the widget window to its content */
+  /** size the widget window (it stays anchored at its top-right corner) */
   resizeWidget(w: number, h: number): void;
+  /** turn the widget on and bring it to the top-right corner of the screen */
+  showWidget(): void;
   getSettings(): Promise<DesktopSettings>;
   setSettings(patch: Partial<DesktopSettings>): Promise<DesktopSettings>;
   onSettings(cb: (s: DesktopSettings) => void): void;

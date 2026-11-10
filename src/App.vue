@@ -16,11 +16,12 @@ import {
 } from './core/io';
 import { autoOrientation } from './core/workspace';
 import type { Board } from './core/board';
-import { attentionCount, dueLabel, dueReminders, noteTitle, reminderKey } from './core/dates';
+import { attentionCount, dueLabel, dueReminders, noteTitle, reminderKey, textReminderKey, textReminders } from './core/dates';
 import { isInstalled } from './core/install';
 import {
   DEFAULT_DESK,
   type DeskConfig,
+  clampSize,
   deskHash,
   deskWindowSize,
   parseDeskHash,
@@ -85,13 +86,39 @@ interface Ring {
 }
 const ringing = ref<Ring | null>(null);
 
+// times written in notes ring once; this browser remembers which already did
+const SEEN_KEY = 'corkboard:text-reminders';
+function seenTextReminders(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) ?? '[]'));
+  } catch {
+    return new Set();
+  }
+}
+function markTextReminder(key: string) {
+  try {
+    const keys = [...seenTextReminders(), key].slice(-300);
+    localStorage.setItem(SEEN_KEY, JSON.stringify(keys));
+  } catch {
+    /* fine without it */
+  }
+}
+
 async function checkReminders() {
-  for (const { note, board } of dueReminders(store.boards, new Date())) {
+  const now = new Date();
+  for (const { note, board } of dueReminders(store.boards, now)) {
     const title = `⏰ ${noteTitle(note)}`;
-    const body = `${dueLabel(note.due!, new Date())} · ${board.title}`;
+    const body = `${dueLabel(note.due!, now)} · ${board.title}`;
     store.markNotified(note.id, reminderKey(note));
     ringing.value = { noteId: note.id, title, body };
     await showNotification(title, body, note.id);
+  }
+  for (const item of textReminders(store.boards, now, seenTextReminders())) {
+    const title = `⏰ ${item.title}`;
+    const body = `${dueLabel(item.due, now)} · ${item.board.title}`;
+    markTextReminder(textReminderKey(item));
+    ringing.value = { noteId: item.note.id, title, body };
+    await showNotification(title, body, item.note.id);
   }
 }
 
@@ -180,7 +207,10 @@ async function install() {
 
 function openWidget() {
   fileOpen.value = false;
-  window.location.hash = 'widget';
+  // the Windows app has the real thing: show it, top right
+  const b = desktop();
+  if (b) b.showWidget();
+  else window.location.hash = 'widget';
 }
 
 // ------------------------------------------------------- desktop widget
@@ -224,12 +254,12 @@ if (bridge) {
   bridge.onSettings((x) => (onTop.value = x.onTop));
 }
 if (inDeskWidget) document.documentElement.classList.add('cb-desk-widget');
-const deskFits = computed(() => !deskCfg.value.parts.includes('board'));
+const deskFits = computed(() => !deskCfg.value.parts.includes('board') && !deskCfg.value.size);
 watch(
-  () => deskCfg.value.parts.join(','),
+  () => `${deskCfg.value.parts.join(',')}|${deskCfg.value.size?.w}x${deskCfg.value.size?.h}`,
   () => {
     if (!inDeskWidget) return;
-    // with a board the window has a set size; without, it follows its content (see onNatural)
+    // a chosen size, or with a board a set size; otherwise it follows its content (see onNatural)
     const { w, h } = deskWindowSize(deskCfg.value);
     bridge!.resizeWidget(w, h);
   },
@@ -237,6 +267,15 @@ watch(
 );
 function onNatural(h: number) {
   if (inDeskWidget && deskFits.value) bridge!.resizeWidget(deskWindowSize(deskCfg.value).w, h);
+}
+/** the widget's resize grip: follow it live, remember the size at the end */
+function onWidgetResizing(w: number, h: number) {
+  bridge?.resizeWidget(w, h);
+}
+function onWidgetResized(w: number, h: number) {
+  deskCfg.value = { ...deskCfg.value, size: clampSize({ w, h }) };
+  saveDesk(deskCfg.value);
+  if (deskCustom) history.replaceState(null, '', deskHash(deskCfg.value));
 }
 function customizeWidget() {
   if (bridge) bridge.openApp('desk');
@@ -477,6 +516,8 @@ onBeforeUnmount(() => {
       :on-top="onTop"
       :fit="inDeskWidget && deskFits"
       @natural="onNatural"
+      @resizing="onWidgetResizing"
+      @resized="onWidgetResized"
       @board="pickDeskBoard"
       @open="openFromWidget"
       @reveal="revealFromWidget"
