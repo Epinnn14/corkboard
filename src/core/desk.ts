@@ -23,7 +23,7 @@ export interface DeskConfig {
 
 export const DESK_PARTS: { id: DeskPart; label: string; icon: string; hint: string }[] = [
   { id: 'clock', label: 'Date & clock', icon: '🗓️', hint: 'a tear-off calendar page and the time' },
-  { id: 'today', label: "Today's reminders", icon: '⏰', hint: 'overdue and due today, tick them off' },
+  { id: 'today', label: "The day's notes", icon: '⏰', hint: 'today to start with; ‹ › on it for other days' },
   { id: 'week', label: 'Coming up', icon: '📅', hint: 'the next 7 days' },
   { id: 'board', label: 'A board', icon: '📌', hint: 'a live mini board' },
 ];
@@ -50,7 +50,7 @@ export function clampSize(s: DeskSize): DeskSize {
   return { w: c(s.w, DESK_MIN.w, DESK_MAX.w), h: c(s.h, DESK_MIN.h, DESK_MAX.h) };
 }
 
-export const DEFAULT_DESK: DeskConfig = { parts: ['clock', 'today', 'week'], theme: 'cork', boardId: null, size: null };
+export const DEFAULT_DESK: DeskConfig = { parts: ['clock', 'today'], theme: 'cork', boardId: null, size: null };
 
 const PART_IDS = DESK_PARTS.map((p) => p.id);
 const THEME_IDS = DESK_THEMES.map((t) => t.id);
@@ -119,6 +119,16 @@ export function deskLists(boards: readonly Board[], now: Date): { today: DeskIte
     today: items.filter((i) => i.state === 'overdue' || i.state === 'today'),
     week: items.filter((i) => ['tomorrow', 'week', 'later'].includes(i.state) && (parseDue(i.due).getTime() - now.getTime()) / 86_400_000 <= 7),
   };
+}
+
+/**
+ * One day's list for the widget's sticky: `offset` days from today. Today's also
+ * carries what's still open from earlier days. Ticked ones stay, crossed out.
+ */
+export function dayList(boards: readonly Board[], now: Date, offset: number): DeskItem[] {
+  const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+  const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+  return agendaItems(boards, now).filter((i) => i.due.startsWith(key) || (offset === 0 && i.due.slice(0, 10) < key && !i.done));
 }
 
 /** "Good morning" … by the hour. */

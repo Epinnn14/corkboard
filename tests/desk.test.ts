@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Board, createNote } from '../src/core/board';
 import { toDue } from '../src/core/dates';
-import { DEFAULT_DESK, deskHash, deskLists, deskWindowSize, greeting, parseDeskHash, sanitizeDesk } from '../src/core/desk';
+import { DEFAULT_DESK, dayList, deskHash, deskLists, deskWindowSize, greeting, parseDeskHash, sanitizeDesk } from '../src/core/desk';
 import { createBoard } from '../src/core/workspace';
 
 const now = new Date(2026, 10, 10, 9, 0);
@@ -62,6 +62,14 @@ describe('widget lists', () => {
     const { today, week } = deskLists(boards(), now);
     expect(today.map((i) => i.note.text)).toEqual(['Essay', 'Gym']);
     expect(week.map((i) => i.note.text)).toEqual(['Meeting', 'Report', 'Exam']);
+  });
+
+  it("one day's list: today (plus what's still open from before, and what's ticked), or any other day", () => {
+    const bs = boards();
+    expect(dayList(bs, now, 0).map((i) => `${i.title}${i.done ? ' ✓' : ''}`)).toEqual(['Essay', 'Gym', 'Done thing ✓']);
+    expect(dayList(bs, now, 1).map((i) => i.title)).toEqual(['Meeting']);
+    expect(dayList(bs, now, 2).map((i) => i.title)).toEqual(['Report']);
+    expect(dayList(bs, now, 3)).toEqual([]);
   });
 
   it('greets by the hour', () => {

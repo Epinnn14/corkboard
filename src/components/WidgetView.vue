@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue';
 import type { Board } from '../core/board';
-import { dueLabel } from '../core/dates';
-import { DESK_MIN, type DeskConfig, type DeskItem, deskLists, greeting } from '../core/desk';
+import { dueLabel, timeOf } from '../core/dates';
+import { DESK_MIN, type DeskConfig, type DeskItem, dayList, deskLists, greeting } from '../core/desk';
 import { surfaceTile } from '../core/texture';
 import { corkRect } from '../core/workspace';
 import { useWorkspace } from '../stores/workspace';
@@ -59,6 +59,28 @@ const board = computed(() =>
 );
 
 const lists = computed(() => deskLists(props.boards, clock.value));
+
+// the sticky shows one day: today to start with, ‹ › for others (back to today after a minute alone)
+const offset = ref(0);
+let backToToday: ReturnType<typeof setTimeout> | undefined;
+function step(d: number) {
+  offset.value = Math.min(13, Math.max(-1, offset.value + d));
+  clearTimeout(backToToday);
+  if (offset.value !== 0) backToToday = setTimeout(() => (offset.value = 0), 60_000);
+}
+onBeforeUnmount(() => clearTimeout(backToToday));
+const dayItems = computed(() => dayList(props.boards, clock.value, offset.value));
+const shownDay = computed(() => {
+  const d = new Date(clock.value.getFullYear(), clock.value.getMonth(), clock.value.getDate() + offset.value);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+});
+const dayName = computed(() => {
+  if (offset.value === 0) return 'Today';
+  if (offset.value === 1) return 'Tomorrow';
+  if (offset.value === -1) return 'Yesterday';
+  const d = new Date(clock.value.getFullYear(), clock.value.getMonth(), clock.value.getDate() + offset.value);
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+});
 const LIMIT = 5;
 const cut = (items: DeskItem[]) => items.slice(0, LIMIT);
 const more = (items: DeskItem[]) => Math.max(0, items.length - LIMIT);
@@ -76,10 +98,12 @@ const summary = computed(() => {
 });
 /** short "when": just the time today, the day name later on */
 function when(i: DeskItem) {
-  const label = dueLabel(i.due, clock.value);
-  if (i.state === 'today') return label.replace(/^Today /, '');
-  if (i.state === 'overdue' && label.startsWith('Today ')) return `late ${label.slice(6)}`;
-  return label;
+  const time = timeOf(i.due);
+  // on its own day the time is enough
+  if (i.due.slice(0, 10) === shownDay.value) return i.state === 'overdue' && !i.done ? `late ${time}` : time;
+  if (i.state === 'today') return time;
+  // carried over from an earlier day, or coming up: say which day
+  return dueLabel(i.due, clock.value);
 }
 
 const cork = computed(() => {
@@ -195,22 +219,29 @@ function pick(fn: () => void) {
         <div v-if="show('today') || show('week')" class="w-lists">
           <section v-if="show('today')" class="w-today">
             <PushPin class="w-pin" color="yellow" />
-            <h3>Today</h3>
-            <ul v-if="lists.today.length" class="items">
-              <li v-for="i in cut(lists.today)" :key="i.key" :class="i.state">
+            <h3 class="day-head">
+              <button v-if="live" class="day-nav" aria-label="Previous day" data-action="day-prev" :disabled="offset <= -1" @click="step(-1)">‹</button>
+              <span class="day-name" data-field="widget-day">{{ dayName }}</span>
+              <button v-if="live" class="day-nav" aria-label="Next day" data-action="day-next" :disabled="offset >= 13" @click="step(1)">›</button>
+            </h3>
+            <ul v-if="dayItems.length" class="items">
+              <li v-for="i in cut(dayItems)" :key="i.key" :class="[i.state, { done: i.done }]">
                 <button
                   class="tick"
-                  :aria-label="`Mark “${i.title}” done`"
+                  :class="{ on: i.done }"
+                  :aria-label="`Mark “${i.title}” ${i.done ? 'not done' : 'done'}`"
                   :disabled="!live"
                   data-action="widget-tick"
                   @click="tick(i)"
-                />
+                >
+                  <span v-if="i.done" aria-hidden="true">✓</span>
+                </button>
                 <button class="what" :disabled="!live" @click="emit('reveal', i.note.id)">{{ i.title }}</button>
                 <span class="when">{{ when(i) }}</span>
               </li>
-              <li v-if="more(lists.today)" class="more">+{{ more(lists.today) }} more</li>
+              <li v-if="more(dayItems)" class="more">+{{ more(dayItems) }} more</li>
             </ul>
-            <p v-else class="free">All clear ✨</p>
+            <p v-else class="free">{{ offset === 0 ? 'All clear ✨' : 'Nothing planned' }}</p>
           </section>
 
           <section v-if="show('week')" class="w-week">
@@ -422,6 +453,27 @@ h3 { margin: 0 0 8px; font-size: 11.5px; letter-spacing: 0.12em; text-transform:
   transition: transform 0.12s, background 0.12s, opacity 0.12s;
 }
 .tick:hover:not(:disabled) { opacity: 1; transform: scale(1.12); background: rgba(43, 38, 32, 0.12); }
+.tick { display: grid; place-items: center; font-size: 11px; font-weight: 900; line-height: 1; }
+.tick.on { opacity: 1; background: #3c9a5f; border-color: #3c9a5f; color: #fff; }
+/* ticked on the widget: crossed out, right where it is */
+.items li.done .what { text-decoration: line-through; text-decoration-thickness: 2px; opacity: 0.5; }
+.items li.done .when { opacity: 0.35; text-decoration: line-through; }
+.day-head { display: flex; align-items: center; gap: 4px; }
+.day-name { flex: 1; text-align: left; }
+.day-nav {
+  border: 0;
+  background: rgba(43, 38, 32, 0.08);
+  color: inherit;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font: 900 18px/1 system-ui, sans-serif;
+  padding: 0 0 2px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+.day-nav:disabled { opacity: 0.25; cursor: default; }
+.day-nav:hover:not(:disabled) { background: rgba(43, 38, 32, 0.16); }
 .overdue .tick { color: #d9412b; opacity: 1; }
 .dot { width: 9px; height: 9px; border-radius: 50%; justify-self: center; background: currentColor; opacity: 0.5; }
 .tomorrow .dot { background: #7a5cf0; opacity: 1; }

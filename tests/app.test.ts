@@ -173,7 +173,9 @@ describe('dates, agenda and widget', () => {
     expect(w.findAll('.mini .note').length).toBeGreaterThan(3);
     await w.find('[data-action=widget-tick]').trigger('click');
     expect(store.find(n.id)!.note.done).toBe(true);
-    expect(wrapper.find('.w-today').text()).toContain('All clear');
+    // it stays on the day, crossed out
+    expect(wrapper.find('.w-today li.done').text()).toContain('Demo day');
+    expect(wrapper.find('.w-today .tick.on').exists()).toBe(true);
     window.location.hash = '';
     wrapper.unmount();
   });
@@ -246,7 +248,8 @@ describe('desktop widget', () => {
     await wrapper.find('[data-action=desk]').trigger('click');
     const sheet = wrapper.find('.desk');
     expect(sheet.text()).not.toMatch(/wallpaper|Lively/i);
-    expect(sheet.findAll('.desk-part.on').map((b) => b.attributes('data-part'))).toEqual(['clock', 'today', 'week']);
+    expect(sheet.findAll('.desk-part.on').map((b) => b.attributes('data-part'))).toEqual(['clock', 'today']);
+    await sheet.find('[data-part=week]').trigger('click');
     expect(sheet.find('.desk-preview .widget.th-cork').exists()).toBe(true);
     expect(sheet.find('[data-action=get-windows-app]').attributes('href')).toBe(
       'https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard.exe',
@@ -367,7 +370,7 @@ describe('Windows app', () => {
     const wrapper = mount(App, { attachTo: document.body });
     expect(document.documentElement.classList.contains('cb-desk-widget')).toBe(true);
     expect(wrapper.find('.widget.desk').exists()).toBe(true);
-    expect(bridge.resizeWidget).toHaveBeenCalledWith(360, 24 + 168 + 210 + 196);
+    expect(bridge.resizeWidget).toHaveBeenCalledWith(360, 24 + 168 + 210);
     await wrapper.find('.w-today .what').trigger('click');
     expect(bridge.openApp).toHaveBeenCalledWith(`note:${n.id}`);
     await wrapper.find('[data-action=widget-menu]').trigger('click');
@@ -485,7 +488,11 @@ describe('agenda from note text', () => {
     await wrapper.find('.agenda-btn').trigger('click');
     const agenda = wrapper.find('.agenda');
     expect(agenda.findAll('.time').map((t) => t.text())).toEqual(expect.arrayContaining(['10:00', '23:59']));
-    expect(agenda.text()).toContain('from the note');
+    // each item has room for your own note
+    const memo = agenda.findAll('li').find((li) => li.text().includes('buy milk'))!.find('[data-field=memo]');
+    await memo.setValue('oat milk, 2 litres');
+    await memo.trigger('change');
+    expect(store.find(n.id)!.note.memos).toEqual({ 'buy milk@10:00': 'oat milk, 2 litres' });
     const row = agenda.findAll('li').find((li) => li.text().includes('meeting'))!;
     await row.find('input[type=checkbox]').setValue(true);
     expect(store.find(n.id)!.note.text.split('\n')[2]).toBe('m̶e̶e̶t̶i̶n̶g̶ ̶2̶3̶.̶5̶9̶');
@@ -494,6 +501,34 @@ describe('agenda from note text', () => {
     expect((again.find('input').element as HTMLInputElement).checked).toBe(true);
     await again.find('input[type=checkbox]').setValue(false);
     expect(store.find(n.id)!.note.text.split('\n')[2]).toBe('meeting 23.59');
+    wrapper.unmount();
+  });
+});
+
+describe('widget day', () => {
+  it("shows today's notes by default; ‹ › flip to other days", async () => {
+    localStorage.clear();
+    window.location.hash = '#widget';
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    const names = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const d = new Date();
+    const tomorrow = names[(d.getDay() + 1) % 7];
+    store.addNote('index', { text: `${names[d.getDay()]}\nsleep in 23.58` });
+    store.addNote('index', { text: `${tomorrow}\nfutsal 10.00\nchurch 13.00` });
+    const wrapper = mount(App, { attachTo: document.body });
+    const w = () => wrapper.find('.w-today');
+    expect(w().find('[data-field=widget-day]').text()).toBe('Today');
+    expect(w().text()).toContain('sleep in');
+    expect(wrapper.find('.w-week').exists()).toBe(false); // not in the default widget
+    await w().find('[data-action=day-next]').trigger('click');
+    expect(w().find('[data-field=widget-day]').text()).toBe('Tomorrow');
+    expect(w().findAll('.what').map((b) => b.text())).toEqual(['futsal', 'church']);
+    expect(w().findAll('.when').map((b) => b.text())).toEqual(['10:00', '13:00']);
+    await w().find('[data-action=day-prev]').trigger('click');
+    expect(w().find('[data-field=widget-day]').text()).toBe('Today');
+    window.location.hash = '';
     wrapper.unmount();
   });
 });
