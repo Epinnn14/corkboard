@@ -115,7 +115,7 @@ describe('top bar', () => {
     const names = wrapper.findAll('.file-menu .menu-item .mi-title').map((t) => t.element.firstChild?.textContent?.trim());
     expect(names).toEqual([
       'New board', 'Import files', 'Word', 'PDF', 'Text', 'Markdown', 'Backup',
-      'Add to desktop', 'Widget mode', 'Desktop wallpaper', 'Phone wallpaper', 'Install app',
+      'Desktop widget', 'Widget mode', 'Desktop wallpaper', 'Phone wallpaper', 'Install app',
     ]);
     expect(wrapper.find('input[type=file][multiple]').attributes('accept')).toContain('.docx');
     wrapper.unmount();
@@ -152,20 +152,28 @@ describe('dates, agenda and widget', () => {
     wrapper.unmount();
   });
 
-  it('#widget shows the date, clock, up next and a mini board', async () => {
-    window.location.hash = '#widget';
+  it('#widget: calendar page, clock, today on a sticky (tick it off), coming up, optional mini board', async () => {
+    localStorage.clear();
+    window.location.hash = '#widget?show=clock,today,week,board&theme=cork';
     const store = useWorkspace();
     store.replace({ version: 2, boards: [], camera: null });
     const b = store.addBoard('landscape', 'kanban');
     const n = store.addNote('sticky', { boardId: b.id, text: 'Demo day' })!;
-    const d = new Date(Date.now() + 2 * 3600_000);
-    store.setDue(n.id, `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:00`, 0);
+    const d = new Date();
+    const p = (x: number) => String(x).padStart(2, '0');
+    store.setDue(n.id, `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`, 0);
     const wrapper = mount(App, { attachTo: document.body });
-    expect(wrapper.find('.widget').exists()).toBe(true);
+    const w = wrapper.find('.widget');
+    expect(w.classes()).toEqual(expect.arrayContaining(['th-cork', 'wide']));
     expect(wrapper.find('.bar').exists()).toBe(false);
-    expect(wrapper.find('.widget .next').text()).toContain('Demo day');
-    expect(wrapper.find('.widget .time').text()).toMatch(/^\d{2}:\d{2}$/);
-    expect(wrapper.findAll('.widget .mini .note').length).toBeGreaterThan(3);
+    expect(w.find('.cal-day').text()).toBe(String(d.getDate()));
+    expect(w.find('.time').text()).toMatch(/^\d{2}:\d{2}$/);
+    expect(w.find('.w-today').text()).toContain('Demo day');
+    expect(w.find('.sum').text()).toMatch(/^1 thing today/);
+    expect(w.findAll('.mini .note').length).toBeGreaterThan(3);
+    await w.find('[data-action=widget-tick]').trigger('click');
+    expect(store.find(n.id)!.note.done).toBe(true);
+    expect(wrapper.find('.w-today').text()).toContain('All clear');
     window.location.hash = '';
     wrapper.unmount();
   });
@@ -216,7 +224,7 @@ describe('install', () => {
   });
 });
 
-describe('add to desktop', () => {
+describe('desktop widget', () => {
   function dated(text: string, hoursFromNow: number) {
     const store = useWorkspace();
     const d = new Date(Date.now() + hoursFromNow * 3600_000);
@@ -226,7 +234,7 @@ describe('add to desktop', () => {
     return n;
   }
 
-  it('lets you pick what the widget shows, previews it and opens it in its own window', async () => {
+  it('+ → Desktop widget: pick what it shows and its style, preview it, open it or get the Windows app', async () => {
     localStorage.clear();
     const store = useWorkspace();
     store.replace({ version: 2, boards: [], camera: null });
@@ -237,216 +245,179 @@ describe('add to desktop', () => {
     await wrapper.find('.bar .solid.plus').trigger('click');
     await wrapper.find('[data-action=desk]').trigger('click');
     const sheet = wrapper.find('.desk');
-    expect(sheet.findAll('.desk-part.on')).toHaveLength(4);
-    expect(sheet.find('.desk-preview .mini').exists()).toBe(true);
+    expect(sheet.text()).not.toMatch(/wallpaper|Lively/i);
+    expect(sheet.findAll('.desk-part.on').map((b) => b.attributes('data-part'))).toEqual(['clock', 'today', 'week']);
+    expect(sheet.find('.desk-preview .widget.th-cork').exists()).toBe(true);
+    expect(sheet.find('[data-action=get-windows-app]').attributes('href')).toBe(
+      'https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard.exe',
+    );
 
     await sheet.find('[data-part=board]').trigger('click');
+    expect(sheet.find('.desk-preview .mini').exists()).toBe(true);
     await sheet.find('[data-part=clock]').trigger('click');
-    expect(sheet.find('.desk-preview .mini').exists()).toBe(false);
-    expect(sheet.find('.desk-preview .time').exists()).toBe(false);
-    expect(sheet.find('.desk-preview').text()).toContain('Coming up');
+    expect(sheet.find('.desk-preview .cal').exists()).toBe(false);
     await sheet.findAll('.desk-theme')[2].trigger('click');
     expect(sheet.find('.desk-preview .widget.th-dark').exists()).toBe(true);
+    // the preview can't tick things off
+    expect((sheet.find('.desk-preview .w-week .what').element as HTMLButtonElement).disabled).toBe(true);
 
     await sheet.find('[data-action=desk-open]').trigger('click');
-    expect(open).toHaveBeenCalledTimes(1);
     const [url, name, features] = open.mock.calls[0] as [string, string, string];
-    expect(url).toMatch(/#widget\?show=today%2Cweek&theme=dark$/);
+    expect(url).toMatch(/#widget\?show=today%2Cweek%2Cboard&theme=dark&board=/);
     expect(name).toBe('corkboard-widget');
-    expect(features).toMatch(/^popup,width=380/);
-    expect(JSON.parse(localStorage.getItem('corkboard:desk')!)).toMatchObject({ parts: ['today', 'week'], theme: 'dark' });
-    expect(wrapper.find('.desk').exists()).toBe(false);
+    expect(features).toMatch(/^popup,width=860/);
+    expect(JSON.parse(localStorage.getItem('corkboard:desk')!)).toMatchObject({ parts: ['today', 'week', 'board'], theme: 'dark' });
     open.mockRestore();
     wrapper.unmount();
   });
 
-  it('a widget wallpaper link (#widget…&wall=1&snap=…) still opens in a fresh browser', async () => {
-    localStorage.clear();
-    const src = useWorkspace();
-    src.replace({ version: 2, boards: [], camera: null });
-    src.addBoard('landscape');
-    dated('Hand in thesis', 1);
-    const { deskHash, encodeSnapshot, makeSnapshot, DEFAULT_DESK } = await import('../src/core/desk');
-    const cfg = { ...DEFAULT_DESK, boardId: src.boards[0].id, wall: true };
-    const link = deskHash(cfg, await encodeSnapshot(makeSnapshot(src.boards, cfg)));
-
-    setActivePinia(createPinia());
-    const fresh = useWorkspace();
-    fresh.replace({ version: 2, boards: [], camera: null });
-    window.location.hash = link;
-    const wall = mount(App, { attachTo: document.body });
-    await vi.waitFor(() => expect(wall.find('.widget.wall').exists()).toBe(true));
-    expect(wall.find('.widget').text()).toContain('Hand in thesis');
-    expect(wall.find('.widget .snap').text()).toMatch(/^From corkboard, /);
-    window.location.hash = '';
-    wall.unmount();
-  });
-
-  it('a widget link shows only the chosen parts', async () => {
-    window.location.hash = '#widget?show=today&theme=paper';
+  it('a widget link shows only the chosen parts; v1.4 "sticky" settings become cork', async () => {
+    localStorage.setItem('corkboard:desk', JSON.stringify({ parts: ['clock', 'today'], theme: 'sticky', boardId: null }));
+    window.location.hash = '#widget';
     const store = useWorkspace();
     store.replace({ version: 2, boards: [], camera: null });
     store.addBoard('landscape');
-    dated('Call mum', 0); // due now: always in today's list (today or overdue)
+    dated('Call mum', 0);
     const wrapper = mount(App, { attachTo: document.body });
     const w = wrapper.find('.widget');
-    expect(w.classes()).toEqual(expect.arrayContaining(['th-paper', 'solo']));
-    expect(w.find('.time').exists()).toBe(false);
+    expect(w.classes()).toContain('th-cork');
+    expect(w.find('.w-today').text()).toContain('Call mum');
+    expect(w.find('.w-week').exists()).toBe(false);
     expect(w.find('.mini').exists()).toBe(false);
-    expect(w.text()).toContain('Call mum');
-    expect(w.text()).not.toContain('Coming up');
-    window.location.hash = '';
     wrapper.unmount();
-  });
-});
 
-describe('board wallpaper (#wall)', () => {
-  it('shows only the weekly planner, editable, with everything else behind one round button', async () => {
-    window.location.hash = '#wall';
+    window.location.hash = '#widget?show=week&theme=paper';
+    const again = mount(App, { attachTo: document.body });
+    expect(again.find('.widget').classes()).toContain('th-paper');
+    expect(again.find('.cal').exists()).toBe(false);
+    expect(again.find('.w-today').exists()).toBe(false);
+    expect(again.find('.w-week').exists()).toBe(true);
+    window.location.hash = '';
+    again.unmount();
+  });
+
+  it('the widget menu opens corkboard and its settings', async () => {
+    localStorage.clear();
+    window.location.hash = '#widget';
     const store = useWorkspace();
     store.replace({ version: 2, boards: [], camera: null });
     store.addBoard('landscape');
-    const planner = store.addBoard('landscape', 'week');
-    store.setActive(store.boards[0].id);
     const wrapper = mount(App, { attachTo: document.body });
-    expect(wrapper.find('.bar').exists()).toBe(false);
-    expect(wrapper.find('.dock').exists()).toBe(false);
-    expect(wrapper.findAll('.wallview .board')).toHaveLength(1);
-    expect(wrapper.find('.wallview .board').attributes('data-board-id')).toBe(planner.id);
-    expect(store.lockedBoardId).toBe(planner.id);
-    expect(wrapper.find('.fab-menu').exists()).toBe(false);
-
-    // edit straight on the wallpaper
-    const before = store.board(planner.id)!.notes.length;
-    await wrapper.find('[data-action=fab]').trigger('click');
-    expect(wrapper.find('.fab-menu').text()).toContain('Weekly planner');
-    await wrapper.find('[data-add=sticky]').trigger('click');
-    expect(store.board(planner.id)!.notes).toHaveLength(before + 1);
-    expect(wrapper.find('.fab-menu').exists()).toBe(false);
-    const ta = wrapper.find('.wallview .note.selected textarea, .wallview .note textarea');
-    expect(ta.exists()).toBe(true);
-
-    // switch board and background from the same button
-    await wrapper.find('[data-action=fab]').trigger('click');
-    await wrapper.findAll('.fab-item').find((b) => b.text().includes('another board'))!.trigger('click');
-    await wrapper.findAll('.fab-boards button')[0].trigger('click');
-    expect(wrapper.find('.wallview .board').attributes('data-board-id')).toBe(store.boards[0].id);
-    expect(window.location.hash).toBe(`#wall?board=${store.boards[0].id}`);
-    await wrapper.find('[data-action=fab]').trigger('click');
-    await wrapper.find('[data-action=wall-bg]').trigger('click');
-    expect(wrapper.find('.wallview.bg-dark').exists()).toBe(true);
-    expect(wrapper.find('.fab-menu').exists()).toBe(true); // stays open to compare backgrounds
-
-    await wrapper.find('[data-action=wall-open]').trigger('click');
+    await wrapper.find('[data-action=widget-menu]').trigger('click');
+    expect(wrapper.find('[data-action=widget-top]').exists()).toBe(false); // only in the Windows app
+    await wrapper.find('[data-action=widget-customize]').trigger('click');
     await new Promise((r) => setTimeout(r));
     expect(wrapper.find('.bar').exists()).toBe(true);
-    expect(store.lockedBoardId).toBeNull();
-    window.location.hash = '';
-    wrapper.unmount();
-  });
-
-  it('Add to desktop (website): download the Windows app, or open the board full screen', async () => {
-    localStorage.clear();
-    const store = useWorkspace();
-    store.replace({ version: 2, boards: [], camera: null });
-    store.addBoard('landscape');
-    const planner = store.addBoard('landscape', 'week');
-    const open = vi.spyOn(window, 'open').mockReturnValue({} as Window);
-    const wrapper = mount(App, { attachTo: document.body });
-    await wrapper.find('.bar .solid.plus').trigger('click');
-    await wrapper.find('[data-action=desk]').trigger('click');
-    expect(wrapper.find('[data-card=get-app]').exists()).toBe(true);
-    expect(wrapper.find('.desk').text()).not.toContain('Lively');
-    expect(wrapper.find('[data-action=get-windows-app]').attributes('href')).toBe(
-      'https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard-Setup.exe',
-    );
-    expect((wrapper.find('[data-field=wall-board]').element as HTMLSelectElement).value).toBe(planner.id);
-    await wrapper.find('[data-action=board-wall-open]').trigger('click');
-    expect(open.mock.calls[0][0]).toMatch(new RegExp(`#wall\\?board=${planner.id}$`));
-    expect(open.mock.calls[0][1]).toBe('corkboard-wall');
-    open.mockRestore();
+    expect(wrapper.find('.desk').exists()).toBe(true);
     wrapper.unmount();
   });
 });
 
 describe('Windows app', () => {
-  function fakeBridge(wall: boolean) {
-    let editCb: (s: { editing: boolean; simple: boolean }) => void = () => {};
-    let settings = { wallpaper: true, mode: 'behind' as const, startup: false, embedded: true };
+  function dated(text: string, hoursFromNow: number) {
+    const store = useWorkspace();
+    const d = new Date(Date.now() + hoursFromNow * 3600_000);
+    const p = (x: number) => String(x).padStart(2, '0');
+    const n = store.addNote('sticky', { text })!;
+    store.setDue(n.id, `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`, 0);
+    return n;
+  }
+  function fakeBridge(widget: boolean) {
+    let settings = { widget: true, onTop: false, startup: true };
+    const listeners: ((s: typeof settings) => void)[] = [];
     const bridge = {
-      wall,
-      version: '1.6.0',
-      onEditMode: (cb: typeof editCb) => (editCb = cb),
-      edit: vi.fn(),
-      done: vi.fn(),
+      widget,
       openApp: vi.fn(),
-      setBoardRect: vi.fn(),
+      resizeWidget: vi.fn(),
       getSettings: vi.fn(async () => settings),
-      setSettings: vi.fn(async (p: object) => (settings = { ...settings, ...p })),
+      setSettings: vi.fn(async (p: object) => {
+        settings = { ...settings, ...p };
+        listeners.forEach((cb) => cb(settings));
+        return settings;
+      }),
+      onSettings: (cb: (s: typeof settings) => void) => listeners.push(cb),
     };
     (window as unknown as { corkboardDesktop: unknown }).corkboardDesktop = bridge;
-    return { bridge, setEditing: (editing: boolean, simple = false) => editCb({ editing, simple }) };
+    return bridge;
   }
   const clearBridge = () => delete (window as unknown as { corkboardDesktop?: unknown }).corkboardDesktop;
 
-  it('the wallpaper window: quiet until double-clicked, then editable with Done', async () => {
+  it('the widget window: transparent, sized to fit, menu talks to the app', async () => {
     localStorage.clear();
-    window.location.hash = '#wall';
-    const { bridge, setEditing } = fakeBridge(true);
+    window.location.hash = '#widget';
+    const bridge = fakeBridge(true);
     const store = useWorkspace();
     store.replace({ version: 2, boards: [], camera: null });
     store.addBoard('landscape');
-    const planner = store.addBoard('landscape', 'week');
+    const n = dated('Dentist', 0);
     const wrapper = mount(App, { attachTo: document.body });
-    expect(wrapper.find('.wallview .board').attributes('data-board-id')).toBe(planner.id);
-    expect(bridge.setBoardRect).toHaveBeenCalled();
-    expect(wrapper.find('[data-action=fab]').exists()).toBe(false);
-    expect(wrapper.find('[data-action=wall-done]').exists()).toBe(false);
-
-    setEditing(true);
-    await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-action=fab]').exists()).toBe(true);
-    await wrapper.find('[data-action=fab]').trigger('click');
-    await wrapper.find('[data-add=sticky]').trigger('click');
-    expect(store.board(planner.id)!.notes.some((n) => n.kind === 'sticky' && n.text === '')).toBe(true);
-    await wrapper.find('[data-action=fab]').trigger('click');
-    await wrapper.find('[data-action=wall-open]').trigger('click');
-    expect(bridge.openApp).toHaveBeenCalled();
-    expect(wrapper.find('.wallview').exists()).toBe(true); // the wallpaper stays the wallpaper
-    await wrapper.find('[data-action=wall-done]').trigger('click');
-    expect(bridge.done).toHaveBeenCalled();
-    setEditing(false);
-    await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-action=fab]').exists()).toBe(false);
-
-    // simple mode: always editable, no Done
-    setEditing(true, true);
-    await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-action=fab]').exists()).toBe(true);
-    expect(wrapper.find('[data-action=wall-done]').exists()).toBe(false);
+    expect(document.documentElement.classList.contains('cb-desk-widget')).toBe(true);
+    expect(wrapper.find('.widget.desk').exists()).toBe(true);
+    expect(bridge.resizeWidget).toHaveBeenCalledWith(360, 24 + 168 + 210 + 196);
+    await wrapper.find('.w-today .what').trigger('click');
+    expect(bridge.openApp).toHaveBeenCalledWith(`note:${n.id}`);
+    await wrapper.find('[data-action=widget-menu]').trigger('click');
+    await wrapper.find('[data-action=widget-customize]').trigger('click');
+    expect(bridge.openApp).toHaveBeenCalledWith('desk');
+    await wrapper.find('[data-action=widget-menu]').trigger('click');
+    await wrapper.find('[data-action=widget-top]').trigger('click');
+    expect(bridge.setSettings).toHaveBeenCalledWith({ onTop: true });
+    await wrapper.find('[data-action=widget-menu]').trigger('click');
+    expect(wrapper.find('[data-action=widget-top]').text()).toContain('Stop keeping on top');
+    await wrapper.find('[data-action=widget-hide]').trigger('click');
+    expect(bridge.setSettings).toHaveBeenCalledWith({ widget: false });
+    document.documentElement.classList.remove('cb-desk-widget');
     clearBridge();
     window.location.hash = '';
     wrapper.unmount();
   });
 
-  it('the app window: wallpaper settings instead of the download', async () => {
-    const { bridge } = fakeBridge(false);
+  it('the app window: widget settings instead of the download; #note= shows a note', async () => {
+    const bridge = fakeBridge(false);
     const store = useWorkspace();
     store.replace({ version: 2, boards: [], camera: null });
     store.addBoard('landscape');
+    const n = store.addNote('sticky', { text: 'from the widget' })!;
+    store.select(null);
+    window.location.hash = `#note=${n.id}`;
     const wrapper = mount(App, { attachTo: document.body });
+    await new Promise((r) => setTimeout(r));
+    expect(store.selectedId).toBe(n.id);
     await wrapper.find('.bar .solid.plus').trigger('click');
     await wrapper.find('[data-action=desk]').trigger('click');
-    await vi.waitFor(() => expect((wrapper.find('[data-field=wall-on]').element as HTMLInputElement).checked).toBe(true));
+    await vi.waitFor(() => expect((wrapper.find('[data-field=widget-on]').element as HTMLInputElement).checked).toBe(true));
     expect(wrapper.find('[data-card=get-app]').exists()).toBe(false);
-    await wrapper.find('[data-field=wall-startup]').setValue(true);
-    expect(bridge.setSettings).toHaveBeenCalledWith({ startup: true });
-    await wrapper.find('[data-field=wall-mode]').setValue('simple');
-    expect(bridge.setSettings).toHaveBeenCalledWith({ mode: 'simple' });
-    await wrapper.find('[data-action=wall-edit]').trigger('click');
-    expect(bridge.edit).toHaveBeenCalled();
-    expect(wrapper.find('.desk').exists()).toBe(false);
+    await wrapper.find('[data-field=widget-top]').setValue(true);
+    expect(bridge.setSettings).toHaveBeenCalledWith({ onTop: true });
+    await wrapper.find('[data-field=widget-startup]').setValue(false);
+    expect(bridge.setSettings).toHaveBeenCalledWith({ startup: false });
     clearBridge();
+    wrapper.unmount();
+  });
+});
+
+describe('polaroid', () => {
+  it('a tap on the picture opens the photo picker; the caption is for writing', async () => {
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    store.addNote('polaroid');
+    const proto = Element.prototype as unknown as { setPointerCapture?: unknown };
+    const had = proto.setPointerCapture;
+    proto.setPointerCapture = () => {};
+    const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {});
+    const wrapper = mount(App, { attachTo: document.body });
+    const note = wrapper.find('.note.polaroid');
+    expect(note.find('.photo').attributes('title')).toBe('Click to add a photo');
+    // with pointer capture the release lands on the note itself, not on the picture
+    await note.find('.photo').trigger('pointerdown', { pointerId: 1 });
+    await note.trigger('pointerup', { pointerId: 1 });
+    expect(click).toHaveBeenCalledTimes(1);
+    await note.find('textarea').trigger('pointerdown', { pointerId: 2 });
+    await note.trigger('pointerup', { pointerId: 2 });
+    expect(click).toHaveBeenCalledTimes(1);
+    click.mockRestore();
+    proto.setPointerCapture = had;
     wrapper.unmount();
   });
 });

@@ -1,16 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Board, createNote } from '../src/core/board';
 import { toDue } from '../src/core/dates';
-import {
-  DEFAULT_DESK,
-  decodeSnapshot,
-  deskHash,
-  deskLists,
-  encodeSnapshot,
-  makeSnapshot,
-  parseDeskHash,
-  sanitizeDesk,
-} from '../src/core/desk';
+import { DEFAULT_DESK, deskHash, deskLists, deskWindowSize, greeting, parseDeskHash, sanitizeDesk } from '../src/core/desk';
 import { createBoard } from '../src/core/workspace';
 
 const now = new Date(2026, 10, 10, 9, 0);
@@ -27,75 +18,43 @@ function boards(): Board[] {
     note('Holiday', at(20)),
     note('Done thing', at(0), { done: true }),
     note('Plain note'),
-    { ...createNote('polaroid', a, { text: 'pic', now: 1 }), image: 'data:image/png;base64,AAAA' },
   ];
   const b = createBoard([a], 'landscape', 'Work');
   b.notes = [{ ...createNote('index', b, { text: 'Report', now: 1 }), due: at(2) }];
   return [a, b];
 }
 
-describe('desk settings', () => {
+describe('widget settings', () => {
   it('round-trips through the hash and falls back to the saved default', () => {
-    const c = { parts: ['today', 'board'] as const, theme: 'dark' as const, boardId: 'b1', wall: true };
-    const h = deskHash({ ...c, parts: [...c.parts] });
-    expect(h).toBe('#widget?show=today%2Cboard&theme=dark&board=b1&wall=1');
-    expect(parseDeskHash(h)).toEqual({ config: { ...c, parts: ['today', 'board'] }, snap: null, custom: true });
+    const c = { parts: ['today', 'board'] as ('today' | 'board')[], theme: 'dark' as const, boardId: 'b1' };
+    const h = deskHash(c);
+    expect(h).toBe('#widget?show=today%2Cboard&theme=dark&board=b1');
+    expect(parseDeskHash(h)).toEqual({ config: c, custom: true });
     const saved = { ...DEFAULT_DESK, theme: 'paper' as const };
-    expect(parseDeskHash('#widget', saved)).toEqual({ config: saved, snap: null, custom: false });
+    expect(parseDeskHash('#widget', saved)).toEqual({ config: saved, custom: false });
   });
 
-  it('ignores junk', () => {
+  it('ignores junk and upgrades the v1.4 "sticky" style to cork', () => {
     expect(sanitizeDesk({ parts: ['nope'] as never, theme: 'neon' as never })).toEqual(DEFAULT_DESK);
+    expect(sanitizeDesk({ theme: 'sticky' as never }).theme).toBe('cork');
     expect(parseDeskHash('#widget?show=week,clock,week&theme=x').config.parts).toEqual(['clock', 'week']);
+  });
+
+  it('window size follows what it shows', () => {
+    expect(deskWindowSize({ parts: ['clock', 'today', 'week'] })).toEqual({ w: 360, h: 598 });
+    expect(deskWindowSize({ parts: ['today'] })).toEqual({ w: 360, h: 298 });
+    expect(deskWindowSize({ parts: ['clock', 'board'] }).w).toBe(860);
   });
 });
 
-describe('desk lists', () => {
-  it('today = overdue + today (not done), week = the next 7 days', () => {
+describe('widget lists', () => {
+  it('today = overdue + today (not done), coming up = the next 7 days', () => {
     const { today, week } = deskLists(boards(), now);
     expect(today.map((i) => i.note.text)).toEqual(['Essay', 'Gym']);
     expect(week.map((i) => i.note.text)).toEqual(['Meeting', 'Report', 'Exam']);
   });
-});
 
-describe('wallpaper snapshot', () => {
-  it('keeps the chosen board and the dated notes, drops photos, survives encoding', async () => {
-    const bs = boards();
-    const snap = makeSnapshot(bs, { ...DEFAULT_DESK, boardId: bs[0].id }, 123);
-    expect(snap.boards.map((b) => b.title)).toEqual(['Uni', 'Work']);
-    expect(snap.boards[0].notes).toHaveLength(8);
-    expect(snap.boards[0].notes.some((n) => n.image)).toBe(false);
-
-    const noBoard = makeSnapshot(bs, { ...DEFAULT_DESK, parts: ['today', 'week'] }, 123);
-    expect(noBoard.boards[0].notes.map((n) => n.text)).toEqual(['Essay', 'Gym', 'Meeting', 'Exam', 'Holiday']);
-
-    const code = await encodeSnapshot(snap);
-    expect(code).toMatch(/^[zj][A-Za-z0-9_-]+$/);
-    const back = await decodeSnapshot(code);
-    expect(back?.at).toBe(123);
-    expect(back?.boards[0].notes.map((n) => n.text)).toEqual(snap.boards[0].notes.map((n) => n.text));
-    expect(deskLists(back!.boards, now).today.map((i) => i.note.text)).toEqual(['Essay', 'Gym']);
-  });
-
-  it('rejects broken or tampered links', async () => {
-    expect(await decodeSnapshot('zgarbage')).toBeNull();
-    const bad = 'j' + btoa(JSON.stringify({ v: 1, at: 1, boards: [{ id: 'x', title: 'X', notes: [{ kind: 'evil' }] }] })).replace(/=+$/, '');
-    expect(await decodeSnapshot(bad)).toBeNull();
-  });
-});
-
-describe('board wallpaper', () => {
-  it('hash round trip and the weekly planner as default', async () => {
-    const { wallHash, parseWallHash, defaultWallBoard } = await import('../src/core/desk');
-    expect(wallHash('b1')).toBe('#wall?board=b1');
-    expect(wallHash(null)).toBe('#wall');
-    expect(parseWallHash('#wall?board=b1&bg=dark&snap=zAB')).toEqual({ boardId: 'b1', bg: 'dark', snap: 'zAB' });
-    expect(parseWallHash('#wall')).toEqual({ boardId: null, bg: 'light', snap: null });
-    expect(parseWallHash('#wallpaper')).toBeNull();
-    expect(parseWallHash('#widget')).toBeNull();
-    const a = createBoard([], 'landscape', 'My board');
-    const w = createBoard([a], 'landscape', 'Weekly planner');
-    expect(defaultWallBoard([a, w], a)?.title).toBe('Weekly planner');
-    expect(defaultWallBoard([a], null)?.title).toBe('My board');
+  it('greets by the hour', () => {
+    expect([3, 9, 14, 20].map((h) => greeting(new Date(2026, 0, 1, h)))).toEqual(['Up late', 'Good morning', 'Good afternoon', 'Good evening']);
   });
 });

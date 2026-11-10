@@ -26,7 +26,7 @@ let start: { px: number; py: number; x: number; y: number; id: number } | null =
 function onFrameDown(e: PointerEvent) {
   const t = e.target as HTMLElement;
   const onFrame = t === e.currentTarget || t.classList.contains('tab') || t.classList.contains('tab-grip');
-  if (!onFrame || e.button !== 0 || store.lockedBoardId === props.board.id) return;
+  if (!onFrame || e.button !== 0) return;
   e.preventDefault();
   e.stopPropagation();
   store.setActive(props.board.id);

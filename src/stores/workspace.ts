@@ -53,8 +53,6 @@ interface State {
   draggingId: string | null;
   undo: Undo | null;
   loaded: boolean;
-  /** board shown alone (wallpaper view): notes can't leave it and it can't be dragged */
-  lockedBoardId: string | null;
 }
 
 export const useWorkspace = defineStore('workspace', {
@@ -65,7 +63,6 @@ export const useWorkspace = defineStore('workspace', {
     draggingId: null,
     undo: null,
     loaded: false,
-    lockedBoardId: null,
   }),
 
   getters: {
@@ -93,7 +90,6 @@ export const useWorkspace = defineStore('workspace', {
       this.ws = { ...ws, camera: this.ws.camera };
       if (!ws.boards.some((b) => b.id === this.activeId)) this.activeId = ws.boards[0]?.id ?? null;
       if (this.selectedId && !ws.boards.some((b) => b.notes.some((n) => n.id === this.selectedId))) this.selectedId = null;
-      if (this.lockedBoardId && !ws.boards.some((b) => b.id === this.lockedBoardId)) this.lockedBoardId = null;
     },
 
     find(noteId: string): { board: Board; note: Note } | null {
@@ -195,7 +191,7 @@ export const useWorkspace = defineStore('workspace', {
       const { board, note } = f;
       const src = corkRect(board);
       const centre = { x: src.x + note.x + note.w / 2, y: src.y + note.y + note.h / 2 };
-      const target = this.lockedBoardId === board.id ? null : boardAt(this.ws.boards, centre);
+      const target = boardAt(this.ws.boards, centre);
       if (!target || target.id === board.id) {
         Object.assign(note, clampToBoard(note, board.orientation));
         return;
@@ -313,16 +309,6 @@ export const useWorkspace = defineStore('workspace', {
       } else {
         b.notes.push(...u.notes);
       }
-    },
-
-    /** Wallpaper link opened in another browser (Lively): add its board once, then edits stay local. */
-    adoptBoard(b: Board): Board {
-      const mine = this.board(b.id);
-      if (mine) return mine;
-      const [placed] = placeImported(this.ws.boards, [b]);
-      const kept = { ...placed, id: b.id };
-      this.ws.boards.push(kept);
-      return kept;
     },
 
     importBoards(incoming: Board[]): Board[] {

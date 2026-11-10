@@ -14,7 +14,7 @@ interface Channel {
 
 /**
  * Save shortly after every change and tell the other corkboard windows of
- * this browser (app, widget, wallpaper) to pick it up. A window with unsaved
+ * this browser (app, widget) to pick it up. A window with unsaved
  * changes of its own keeps them; they are saved and announced right after.
  */
 export function startAutosave(

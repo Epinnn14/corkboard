@@ -3,37 +3,29 @@
  * it is absent and corkboard behaves like the website / installed web app.
  */
 export interface DesktopSettings {
-  /** show the wallpaper board at all */
-  wallpaper: boolean;
-  /** 'behind': real wallpaper under the desktop icons; 'simple': a full-screen window kept at the back */
-  mode: 'behind' | 'simple';
+  /** show the widget on the desktop */
+  widget: boolean;
+  /** keep the widget above other windows */
+  onTop: boolean;
   /** start corkboard with Windows */
   startup: boolean;
-  /** read-only: did the last attempt to go behind the icons work */
-  embedded?: boolean;
-}
-
-export interface EditState {
-  editing: boolean;
-  simple: boolean;
 }
 
 export interface DesktopBridge {
-  /** this window is the wallpaper */
-  wall: boolean;
-  version: string;
-  onEditMode(cb: (s: EditState) => void): void;
-  edit(): void;
-  done(): void;
-  openApp(): void;
-  setBoardRect(r: { x: number; y: number; w: number; h: number }): void;
+  /** this window is the desktop widget */
+  widget: boolean;
+  /** open (or focus) the full corkboard window: 'desk' opens the widget settings there, 'note:<id>' shows that note */
+  openApp(view?: 'desk' | `note:${string}`): void;
+  /** fit the widget window to its content */
+  resizeWidget(w: number, h: number): void;
   getSettings(): Promise<DesktopSettings>;
   setSettings(patch: Partial<DesktopSettings>): Promise<DesktopSettings>;
+  onSettings(cb: (s: DesktopSettings) => void): void;
 }
 
 export function desktop(): DesktopBridge | null {
   return (window as Window & { corkboardDesktop?: DesktopBridge }).corkboardDesktop ?? null;
 }
 
-/** Where the Windows installer lives (GitHub Releases, built by .github/workflows/desktop.yml). */
-export const WINDOWS_DOWNLOAD = 'https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard-Setup.exe';
+/** The Windows installer (GitHub Releases, built by .github/workflows/desktop.yml). */
+export const WINDOWS_DOWNLOAD = 'https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard.exe';

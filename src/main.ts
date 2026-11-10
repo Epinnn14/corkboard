@@ -12,7 +12,7 @@ const store = useWorkspace();
 
 loadWorkspace().then((saved) => {
   store.replace(saved ?? welcomeWorkspace(autoOrientation({ w: window.innerWidth, h: window.innerHeight })));
-  // autosave (debounced) and keep other corkboard windows (widget, wallpaper, app) in step
+  // autosave (debounced) and keep other corkboard windows (widget, app) in step
   startAutosave(store, { save: saveWorkspace, load: loadWorkspace, channel: typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('corkboard') : null });
   window.addEventListener('pagehide', () => void saveWorkspace(store.ws));
   app.mount('#app');

@@ -21,16 +21,10 @@ import { isInstalled } from './core/install';
 import {
   DEFAULT_DESK,
   type DeskConfig,
-  type DeskSnapshot,
-  decodeSnapshot,
-  defaultWallBoard,
   deskHash,
   deskWindowSize,
   parseDeskHash,
-  parseWallHash,
   sanitizeDesk,
-  type WallBg,
-  wallHash,
 } from './core/desk';
 import { desktop } from './core/desktop';
 import { showNotification } from './core/notify';
@@ -39,7 +33,6 @@ import { useNow } from './composables/now';
 import { useWorkspace } from './stores/workspace';
 import AgendaPanel from './components/AgendaPanel.vue';
 import DeskSheet from './components/DeskSheet.vue';
-import WallView from './components/WallView.vue';
 import InstallSheet from './components/InstallSheet.vue';
 import WidgetView from './components/WidgetView.vue';
 import Workspace from './components/Workspace.vue';
@@ -56,9 +49,9 @@ const sheetOpen = ref(false);
 const agendaOpen = ref(window.location.hash === '#agenda');
 const installOpen = ref(window.location.hash === '#install');
 const isWidget = () => window.location.hash.startsWith('#widget');
-const routeOf = (): 'app' | 'widget' | 'wall' => (isWidget() ? 'widget' : parseWallHash(window.location.hash) ? 'wall' : 'app');
+const routeOf = (): 'app' | 'widget' => (isWidget() ? 'widget' : 'app');
 const route = ref(routeOf());
-const deskOpen = ref(false);
+const deskOpen = ref(window.location.hash === '#desk');
 const now = useNow();
 const attention = computed(() => attentionCount(store.boards, now.value));
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -105,10 +98,6 @@ async function checkReminders() {
 function revealNote(id: string) {
   ringing.value = null;
   agendaOpen.value = false;
-  if (route.value === 'wall' && store.find(id)?.board.id === wallBoard.value?.id) {
-    store.select(id);
-    return;
-  }
   if (route.value !== 'app') window.location.hash = '';
   const boardId = store.reveal(id);
   if (boardId) nextTick(() => space.value?.focusBoard(boardId));
@@ -117,9 +106,17 @@ function revealNote(id: string) {
 function onHash() {
   route.value = routeOf();
   readDesk();
-  readWall();
   if (window.location.hash === '#agenda') agendaOpen.value = true;
   if (window.location.hash === '#install') installOpen.value = true;
+  if (window.location.hash.startsWith('#note=')) {
+    const id = decodeURIComponent(window.location.hash.slice(6));
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    nextTick(() => revealNote(id));
+  }
+  if (window.location.hash === '#desk') {
+    deskOpen.value = true;
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
 }
 
 let reminderTimer: ReturnType<typeof setInterval> | undefined;
@@ -131,11 +128,13 @@ function startReminders() {
   document.addEventListener('visibilitychange', checkReminders);
 }
 onMounted(() => {
-  // several corkboard windows (app, widget, wallpaper) may be open: only one of them rings
+  // several corkboard windows (app, widget pop-ups) may be open: only one of them rings
   const locks = (navigator as Navigator & { locks?: LockManager }).locks;
   if (locks?.request) void locks.request('corkboard-reminders', () => new Promise<void>(() => startReminders()));
   else startReminders();
   window.addEventListener('hashchange', onHash);
+  window.addEventListener('storage', onStorage);
+  if (window.location.hash.startsWith('#note=')) onHash();
   // a click on a notification (handled by the service worker) asks us to show that note
   navigator.serviceWorker?.addEventListener?.('message', (e: MessageEvent) => {
     if (e.data?.type === 'reveal-note') revealNote(e.data.noteId);
@@ -146,6 +145,7 @@ onBeforeUnmount(() => {
   clearInterval(reminderTimer);
   document.removeEventListener('visibilitychange', checkReminders);
   window.removeEventListener('hashchange', onHash);
+  window.removeEventListener('storage', onStorage);
 });
 
 // ------------------------------------------------------------ install (PWA)
@@ -197,29 +197,62 @@ function loadDesk(): DeskConfig {
 }
 function saveDesk(c: DeskConfig) {
   try {
-    localStorage.setItem(DESK_KEY, JSON.stringify({ ...c, wall: false }));
+    localStorage.setItem(DESK_KEY, JSON.stringify(c));
   } catch {
     /* fine without it */
   }
 }
 const deskCfg = ref<DeskConfig>(DEFAULT_DESK);
-const deskSnap = ref<DeskSnapshot | null>(null);
-const deskSnapPending = ref(false);
 let deskCustom = false;
 function readDesk() {
-  const { config, snap, custom } = parseDeskHash(window.location.hash, loadDesk());
+  const { config, custom } = parseDeskHash(window.location.hash, loadDesk());
   deskCfg.value = config;
   deskCustom = custom;
-  deskSnap.value = null;
-  deskSnapPending.value = !!snap;
-  if (snap) {
-    void decodeSnapshot(snap).then((s) => {
-      deskSnap.value = s;
-      deskSnapPending.value = false;
-    });
-  }
 }
 readDesk();
+// "Customize" in another window (the app) changes the saved widget: follow it here
+function onStorage(e: StorageEvent) {
+  if (e.key === DESK_KEY && route.value === 'widget' && !deskCustom) readDesk();
+}
+
+// ------------------------------------------------------- the Windows app
+const bridge = desktop();
+const inDeskWidget = !!bridge?.widget;
+const onTop = ref(false);
+if (bridge) {
+  void bridge.getSettings().then((x) => (onTop.value = x.onTop));
+  bridge.onSettings((x) => (onTop.value = x.onTop));
+}
+if (inDeskWidget) document.documentElement.classList.add('cb-desk-widget');
+const deskFits = computed(() => !deskCfg.value.parts.includes('board'));
+watch(
+  () => deskCfg.value.parts.join(','),
+  () => {
+    if (!inDeskWidget) return;
+    // with a board the window has a set size; without, it follows its content (see onNatural)
+    const { w, h } = deskWindowSize(deskCfg.value);
+    bridge!.resizeWidget(w, h);
+  },
+  { immediate: true },
+);
+function onNatural(h: number) {
+  if (inDeskWidget && deskFits.value) bridge!.resizeWidget(deskWindowSize(deskCfg.value).w, h);
+}
+function customizeWidget() {
+  if (bridge) bridge.openApp('desk');
+  else {
+    window.location.hash = '';
+    deskOpen.value = true;
+  }
+}
+function openFromWidget() {
+  if (bridge) bridge.openApp();
+  else leaveWidget();
+}
+function revealFromWidget(id: string) {
+  if (bridge) bridge.openApp(`note:${id}`);
+  else revealNote(id);
+}
 function pickDeskBoard(id: string) {
   deskCfg.value = { ...deskCfg.value, boardId: id };
   saveDesk(deskCfg.value);
@@ -240,65 +273,6 @@ function openDeskWindow(c: DeskConfig) {
 }
 function leaveWidget() {
   window.location.hash = '';
-}
-
-// ------------------------------------------- one board as the wallpaper
-const wall = ref<{ boardId: string | null; bg: WallBg }>({ boardId: null, bg: 'light' });
-const wallBoard = computed(() =>
-  route.value === 'wall' ? (store.board(wall.value.boardId ?? '') ?? defaultWallBoard(store.boards, store.active)) : null,
-);
-const WALL_KEY = 'corkboard:wall';
-function savedWall(): { boardId: string | null; bg: WallBg } {
-  try {
-    const raw = JSON.parse(localStorage.getItem(WALL_KEY) ?? 'null');
-    return { boardId: typeof raw?.boardId === 'string' ? raw.boardId : null, bg: raw?.bg === 'dark' ? 'dark' : 'light' };
-  } catch {
-    return { boardId: null, bg: 'light' };
-  }
-}
-function readWall() {
-  const w = parseWallHash(window.location.hash);
-  if (!w) return;
-  const saved = savedWall();
-  // the link wins; a bare #wall (the Windows app's wallpaper) shows the board picked last time
-  const bare = !w.boardId && w.bg === 'light' && !w.snap;
-  wall.value = bare ? saved : { boardId: w.boardId, bg: w.bg };
-  if (w.snap) {
-    // a wallpaper link opened in another browser (Lively): keep a copy of its board here once
-    void decodeSnapshot(w.snap).then((snap) => {
-      const b = snap?.boards.find((x) => x.id === w.boardId) ?? snap?.boards[0];
-      if (b) wall.value = { ...wall.value, boardId: store.adoptBoard(b).id };
-    });
-  }
-}
-readWall();
-watch(
-  wallBoard,
-  (b) => {
-    store.lockedBoardId = b?.id ?? null;
-    if (b && store.active?.id !== b.id) store.setActive(b.id);
-  },
-  { immediate: true },
-);
-function setWall(patch: Partial<{ boardId: string; bg: WallBg }>) {
-  wall.value = { ...wall.value, ...patch };
-  try {
-    localStorage.setItem(WALL_KEY, JSON.stringify(wall.value));
-  } catch {
-    /* fine without it */
-  }
-  if (desktop()?.wall) return; // the app's wallpaper keeps its plain #wall address
-  store.select(null);
-  const snap = new URLSearchParams(window.location.hash.slice(6)).get('snap') ?? undefined;
-  history.replaceState(null, '', wallHash(wall.value.boardId, wall.value.bg, snap));
-}
-function openWallWindow(boardId: string | null) {
-  const w = window.screen?.availWidth ?? 1440;
-  const h = window.screen?.availHeight ?? 900;
-  const url = window.location.href.replace(/#.*$/, '') + wallHash(boardId);
-  const win = window.open(url, 'corkboard-wall', `popup,width=${w},height=${h},left=0,top=0`);
-  if (!win) say('Your browser blocked the window. Allow pop-ups for corkboard and try again');
-  else deskOpen.value = false;
 }
 
 function viewportSize() {
@@ -460,7 +434,6 @@ function onKey(e: KeyboardEvent) {
     return;
   }
   if (editing() || e.ctrlKey || e.metaKey || e.altKey || route.value === 'widget') return;
-  if (route.value === 'wall' && !['Delete', 'Backspace', 'n', 'N', 'a', 'A', 'Escape'].includes(e.key)) return;
   if ((e.key === 'Delete' || e.key === 'Backspace') && store.selectedId) store.removeNote(store.selectedId);
   else if (e.key === 'n' || e.key === 'N') addNote('sticky');
   else if (e.key === 'b' || e.key === 'B') sheetOpen.value = true;
@@ -498,52 +471,24 @@ onBeforeUnmount(() => {
 <template>
   <div v-if="route === 'widget'" class="app">
     <WidgetView
-      v-if="!deskSnapPending"
       :config="deskCfg"
-      :boards="deskSnap?.boards ?? store.boards"
-      :snapshot-at="deskSnap?.at ?? null"
+      :boards="store.boards"
+      :desk="inDeskWidget"
+      :on-top="onTop"
+      :fit="inDeskWidget && deskFits"
+      @natural="onNatural"
       @board="pickDeskBoard"
-      @open="leaveWidget"
+      @open="openFromWidget"
+      @reveal="revealFromWidget"
+      @customize="customizeWidget"
+      @on-top="bridge?.setSettings({ onTop: $event })"
+      @hide="bridge?.setSettings({ widget: false })"
     />
     <div v-if="ringing" class="ring" role="alert">
       <span class="ring-ico" aria-hidden="true">⏰</span>
       <span class="ring-txt"><b>{{ ringing.title.replace('⏰ ', '') }}</b><small>{{ ringing.body }}</small></span>
       <button @click="revealNote(ringing.noteId)">Show</button>
       <button class="ghosty" @click="ringing = null">OK</button>
-    </div>
-  </div>
-  <div v-else-if="route === 'wall'" class="app">
-    <WallView
-      v-if="wallBoard"
-      :board="wallBoard"
-      :boards="store.boards"
-      :bg="wall.bg"
-      :attention="attention"
-      @pick="setWall({ boardId: $event })"
-      @bg="setWall({ bg: $event })"
-      @agenda="agendaOpen = true"
-      @desk="deskOpen = true"
-      @open="leaveWidget"
-    />
-    <DeskSheet
-      v-if="deskOpen"
-      :boards="store.boards"
-      :initial="loadDesk()"
-      @save="saveDesk"
-      @open="openDeskWindow"
-      @wall="openWallWindow"
-      @close="deskOpen = false"
-    />
-    <AgendaPanel v-if="agendaOpen" @close="agendaOpen = false" @reveal="revealNote" />
-    <div v-if="ringing" class="ring" role="alert">
-      <span class="ring-ico" aria-hidden="true">⏰</span>
-      <span class="ring-txt"><b>{{ ringing.title.replace('⏰ ', '') }}</b><small>{{ ringing.body }}</small></span>
-      <button @click="revealNote(ringing.noteId)">Show</button>
-      <button class="ghosty" @click="ringing = null">OK</button>
-    </div>
-    <div v-if="toast" class="toast" role="status">
-      {{ toast }}
-      <button v-if="store.undo" @click="store.undoLast(); toast = ''">Undo</button>
     </div>
   </div>
   <div v-else class="app">
@@ -604,7 +549,7 @@ onBeforeUnmount(() => {
           <p class="menu-label">On your desk &amp; phone</p>
           <button class="menu-item" role="menuitem" data-action="desk" @click="openDesk">
             <span class="mi-ico" aria-hidden="true">📌</span>
-            <span class="mi-title">Add to desktop<small>widget or live wallpaper: pick what it shows</small></span>
+            <span class="mi-title">Desktop widget<small>your date, reminders and a board on the desktop</small></span>
           </button>
           <button class="menu-item" role="menuitem" data-action="widget" @click="openWidget">
             <span class="mi-ico" aria-hidden="true">🗓️</span>
@@ -720,7 +665,6 @@ onBeforeUnmount(() => {
       :initial="loadDesk()"
       @save="saveDesk"
       @open="openDeskWindow"
-      @wall="openWallWindow"
       @close="deskOpen = false"
     />
 
