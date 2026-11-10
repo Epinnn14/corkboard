@@ -125,3 +125,14 @@ describe('agenda → calendar', () => {
     expect(ics).toContain('TRIGGER:-PT0M');
   });
 });
+
+describe('reminders from note text', () => {
+  it('ring at the time, once, and not hours later', async () => {
+    const { textReminders, textReminderKey } = await import('../src/core/dates');
+    const b = createBoard([], 'landscape', 'Weekly planner');
+    b.notes = [{ ...createNote('index', b, { now: now.getTime() }), text: 'TUESDAY\nclass 08.00\nstandup 08.55\ng̶y̶m̶ ̶0̶8̶.̶5̶0̶' }];
+    const due = textReminders([b], now, new Set());
+    expect(due.map((i) => i.title)).toEqual(['standup']); // class was an hour ago, gym is done
+    expect(textReminders([b], now, new Set([textReminderKey(due[0])]))).toEqual([]);
+  });
+});

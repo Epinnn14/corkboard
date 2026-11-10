@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { corkRect } from '../src/core/workspace';
+import { agendaItems } from '../src/core/dates';
+import { boardRect, corkRect } from '../src/core/workspace';
 import { loadWorkspace, saveWorkspace } from '../src/core/storage';
 import { useWorkspace, welcomeWorkspace } from '../src/stores/workspace';
 
@@ -79,10 +80,26 @@ describe('workspace store', () => {
     expect(s.boards.map((b) => b.id)).toContain(k.id);
   });
 
-  it('welcome workspace has a starter board and a weekly planner', () => {
+  it('welcome workspace: a how-to board, a filled-in weekly planner whose times reach the agenda, a kanban', () => {
     const ws = welcomeWorkspace('landscape');
-    expect(ws.boards.map((b) => b.title)).toEqual(['My board', 'Weekly planner']);
+    expect(ws.boards.map((b) => b.title)).toEqual(['Start here', 'Weekly planner', 'Kanban']);
+    const start = ws.boards[0].notes.map((n) => n.text);
+    expect(start.some((t) => t.startsWith('👋 Welcome to corkboard'))).toBe(true);
+    expect(start.some((t) => t.startsWith('HOW TO USE'))).toBe(true);
     expect(ws.boards[0].notes.some((n) => n.kind === 'sticker')).toBe(true);
+    // every day of the planner has plans with times; nothing on the how-to board pretends to be one
+    const items = agendaItems(ws.boards, new Date(2026, 10, 10, 9, 0));
+    expect(new Set(items.map((i) => i.board.title))).toEqual(new Set(['Weekly planner']));
+    expect(items).toHaveLength(14);
+    expect(items.filter((i) => i.due.startsWith('2026-11-10')).map((i) => `${i.due.slice(11)} ${i.title}`)).toEqual([
+      '08:00 class',
+      '12:30 lunch with Rani',
+    ]);
+    // no boards overlap
+    const r = ws.boards.map(boardRect);
+    for (let i = 0; i < r.length; i++)
+      for (let j = i + 1; j < r.length; j++)
+        expect(r[i].x + r[i].w <= r[j].x || r[j].x + r[j].w <= r[i].x || r[i].y + r[i].h <= r[j].y || r[j].y + r[j].h <= r[i].y).toBe(true);
   });
 });
 

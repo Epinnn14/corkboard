@@ -237,12 +237,17 @@ export function attentionCount(boards: readonly Board[], now: Date): number {
   return agendaItems(boards, now).filter((i) => i.state === 'overdue' || i.state === 'today').length;
 }
 
-/** Times written in notes ring at the time, once (`seen` remembers which already did). */
+/**
+ * Times written in notes ring at the time, once (`seen` remembers which already did).
+ * Only while it's still about now (15 min): opening corkboard in the evening doesn't
+ * ring for everything planned since the morning.
+ */
+export const TEXT_REMINDER_GRACE = 15 * 60_000;
 export function textReminders(boards: readonly Board[], now: Date, seen: ReadonlySet<string>): AgendaItem[] {
   return agendaItems(boards, now).filter((i) => {
     if (i.line === undefined || i.done || seen.has(textReminderKey(i))) return false;
     const t = parseDue(i.due).getTime();
-    return t <= now.getTime() && now.getTime() - t < DAY;
+    return t <= now.getTime() && now.getTime() - t < TEXT_REMINDER_GRACE;
   });
 }
 export const textReminderKey = (i: Pick<AgendaItem, 'note' | 'title' | 'due'>) => `${i.note.id}|${i.title}|${i.due}`;

@@ -143,7 +143,8 @@ onMounted(() => {
   });
   ro.observe(el);
   el.addEventListener('wheel', onWheel, { passive: false });
-  if (!store.ws.camera && store.boards[0]) focusBoard(store.boards[0].id);
+  // first time: show every board
+  if (!store.ws.camera && store.boards[0]) fitAll();
 });
 onBeforeUnmount(() => {
   ro?.disconnect();

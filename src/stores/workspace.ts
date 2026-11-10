@@ -15,8 +15,13 @@ import { toggleLineDone } from '../core/detect';
 import { buildTemplate, type TemplateId } from '../core/templates';
 import { boardAt, type Camera, corkRect, createBoard, placeImported, type Workspace } from '../core/workspace';
 
+/**
+ * What a new corkboard starts with: a board that says what this is and how to
+ * use it, a Weekly planner already filled in (its times show up in the Agenda
+ * and the widget straight away) and a Kanban.
+ */
 export function welcomeWorkspace(orientation: Orientation = 'landscape', rnd: () => number = Math.random): Workspace {
-  let board = createBoard([], orientation, 'My board');
+  let board = createBoard([], orientation, 'Start here');
   const portrait = orientation === 'portrait';
   const add = (
     kind: NoteKind,
@@ -28,18 +33,35 @@ export function welcomeWorkspace(orientation: Orientation = 'landscape', rnd: ()
     const note = createNote(kind, board, { at: pos, text, rnd, ...opts });
     board = { ...board, notes: [...board.notes, note] };
   };
-  add('sticky', { x: 230, y: 210 }, 'Double-click anywhere on the board to stick a new note ✨', { color: '#fff27a' });
-  add('index', { x: 700, y: 170 }, 'TO DO\n– buy milk\n– call the plumber\n– finish slides', { tape: 'mint-dots' });
-  add('sticky', { x: 1180, y: 230 }, 'Drag me around, even onto another board', { color: '#ffb3c7' });
-  add('lined', { x: 260, y: 640 }, 'Ideas\n\nweekend trip?\nnew bookshelf\nlearn Vue', { tape: 'pink-stripes' });
-  add('card', { x: 760, y: 560 }, 'Need more room? The + button adds another board, or a ready-made planner.\nDrag empty space to pan, scroll or pinch to zoom.');
-  add('polaroid', { x: 1300, y: 690 }, 'add a photo →', { tape: 'lilac-check' });
-  add('sticky', { x: 1040, y: 790 }, 'Everything is saved in this browser', { color: '#a8dcff' });
-  add('sticker', { x: 1470, y: 110 }, '🔥');
-  add('sticker', { x: 560, y: 860 }, '☕');
-  add('sticker', { x: 960, y: 140 }, '✅');
+  add('card', { x: 330, y: 240 }, '👋 Welcome to corkboard!\nSaved on this device,\nworks without internet.\nTimes in your notes show\nup in the Agenda & widget.');
+  add('lined', { x: 770, y: 330 }, 'HOW TO USE\n\ndouble-click: new note\ndrag: move it around\nclick: write on it\n📅 on a note: a date\ntype a time: Agenda\n+ : boards & files\n0 : see every board', { tape: 'pink-stripes' });
+  add('sticky', { x: 1200, y: 240 }, 'Drag me onto the Weekly planner →', { color: '#ffb3c7' });
+  add('index', { x: 330, y: 660 }, 'TO DO\n– buy milk\n– call the plumber\n– finish slides', { tape: 'mint-dots' });
+  add('sticky', { x: 1080, y: 760 }, 'Open the Agenda 📅 and tick something off', { color: '#a8dcff' });
+  add('polaroid', { x: 1360, y: 640 }, 'add a photo →', { tape: 'lilac-check' });
+  add('sticker', { x: 1480, y: 100 }, '🔥');
+  add('sticker', { x: 640, y: 880 }, '☕');
+  add('sticker', { x: 560, y: 120 }, '✨');
+
+  // a planner that already has a week in it: every line with a time lands in the Agenda
   const planner = buildTemplate('week', [board], orientation, rnd);
-  return { version: 2, boards: [board, planner], camera: null };
+  const WEEK: Record<string, string> = {
+    MONDAY: 'gym 07.00\nteam meeting 10.00\ngroceries 18.30',
+    TUESDAY: 'class 08.00\nlunch with Rani 12.30',
+    WEDNESDAY: 'futsal 16.00\ncall mum 20.00',
+    THURSDAY: 'dentist 09.30\nsubmit report 17.00',
+    FRIDAY: 'movie night 19.30',
+    SATURDAY: 'morning run 06.00\nfamily lunch 12.00',
+    SUNDAY: 'laundry 10.00\nplan the week 20.00',
+  };
+  planner.notes = planner.notes.map((n) => {
+    const day = n.text.split('\n')[0];
+    if (WEEK[day]) return { ...n, text: `${day}\n${WEEK[day]}` };
+    if (n.kind === 'sticky') return { ...n, text: 'This week’s one big goal:\nfinish the project 🚀' };
+    return n;
+  });
+  const kanban = buildTemplate('kanban', [board, planner], orientation, rnd);
+  return { version: 2, boards: [board, planner, kanban], camera: null };
 }
 
 type Undo =
