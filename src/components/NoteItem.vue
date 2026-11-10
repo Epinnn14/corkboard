@@ -57,6 +57,8 @@ const placeholder: Record<Note['kind'], string> = {
 
 // ---- drag: anywhere on the note moves it; a click without movement starts editing
 let start: { px: number; py: number; x: number; y: number; id: number } | null = null;
+// where the press began: with pointer capture, pointerup always targets the note itself
+let pressedPhoto = false;
 
 function onPointerDown(e: PointerEvent) {
   if (e.button !== 0) return;
@@ -65,6 +67,7 @@ function onPointerDown(e: PointerEvent) {
   // while editing, dragging inside the text selects text; the top strip (.grip) still moves the note
   if (target === editor.value && document.activeElement === editor.value) return;
   e.preventDefault();
+  pressedPhoto = props.note.kind === 'polaroid' && !!target.closest('.photo');
   store.select(props.note.id);
   start = { px: e.clientX, py: e.clientY, x: props.note.x, y: props.note.y, id: e.pointerId };
   (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -91,7 +94,9 @@ async function onPointerUp(e: PointerEvent) {
     return;
   }
   if (props.note.kind === 'sticker') return;
-  if (props.note.kind === 'polaroid' && (e.target as HTMLElement).closest('.photo')) {
+  if (pressedPhoto) {
+    // a tap on the picture (not the caption) picks a photo straight away
+    pressedPhoto = false;
     fileInput.value?.click();
     return;
   }
@@ -137,7 +142,7 @@ function onKey(e: KeyboardEvent) {
     <div v-if="note.kind === 'sticker'" class="sticker" aria-label="Sticker">{{ note.text }}</div>
     <div class="grip" title="Drag to move" />
     <div v-if="note.kind !== 'sticker'" class="paper">
-      <div v-if="note.kind === 'polaroid'" class="photo" :title="selected ? 'Click to choose a photo' : ''">
+      <div v-if="note.kind === 'polaroid'" class="photo" :title="note.image ? 'Click to change the photo' : 'Click to add a photo'">
         <img v-if="note.image" :src="note.image" alt="" draggable="false" />
         <span v-else class="photo-hint">📸 tap to add a photo</span>
       </div>
