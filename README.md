@@ -1,13 +1,13 @@
 # corkboard
 
-**An endless wall of cork boards in your browser.** Pin sticky notes, index cards, lined paper,
-polaroids, stickers and washi tape, plan your week, run a kanban, build a moodboard.
-No account, no server: everything stays on your device.
+**An endless wall of cork boards on your laptop and phone.** Pin sticky notes, index cards, lined paper, polaroids,
+stickers and washi tape; plan your week, run a kanban, build a moodboard. Write a time next to a plan and it lands in
+your agenda and on your desktop widget. No account, no server: everything stays on your device.
 
-![A board with sticky notes, an index card, a polaroid and stickers](docs/board.jpg)
+![The Start here board: a welcome card, a How to use note, a to-do card and stickers](docs/board.jpg)
 
-Made for the way people actually plan: students with exams and group projects,
-office folks juggling tasks and meetings, and anyone who thinks better with paper on a wall.
+Made for the way people actually plan: students with exams and group projects, office folks juggling tasks and
+meetings, and anyone who thinks better with paper on a wall.
 
 ## Install
 
@@ -17,59 +17,45 @@ office folks juggling tasks and meetings, and anyone who thinks better with pape
   <a href="https://epinnn14.github.io/corkboard/#install"><img src="docs/install-phone.svg" alt="Install on phone" height="56"></a>
 </p>
 
-**On a laptop (Windows):** the button downloads `corkboard.exe` straight away. Open it and corkboard installs itself
-and starts, with its widget on your desktop. After that it runs **locally on your laptop, no internet needed**:
-your boards are saved on the laptop, the clock, the date and the widget's calendar page follow the laptop's own clock,
-reminders pop up as Windows notifications, and **📆 Add to my calendar** in the agenda puts everything into the
-laptop's calendar (Windows Calendar, Outlook). Windows may say the publisher is unknown: *More info → Run anyway*.
+**Windows laptop:** the button downloads `corkboard.exe`. Open it and corkboard installs itself, starts, and puts its
+widget on your desktop. It runs **on your laptop, no internet needed**: boards are saved on the laptop, the date and time
+follow the laptop's clock, and reminders pop up as Windows notifications. Windows may say the publisher is unknown
+(the app isn't code-signed): *More info → Run anyway*.
 
-**On a phone** (or a Mac / Chromebook): **Install on phone** opens corkboard with an install window ready for the
-device you're on (or scan the code with your phone camera):
+<img src="docs/install-qr.svg" width="130" align="right" alt="QR code to install corkboard on a phone">
 
-<img src="docs/install-qr.svg" width="150" align="right" alt="QR code to install corkboard on a phone">
+**Phone, Mac or Chromebook:** **Install on phone** (or scan the code) opens corkboard with an install window for your
+device: one **Install now** button on Android and in Chrome/Edge; on iPhone and iPad, *Share → Add to Home Screen*.
 
-- **Android, Mac / Chromebook (Chrome or Edge):** one **Install now** button, then confirm once. corkboard gets its
-  own icon and lands on the home screen, Dock or launcher.
-- **iPhone / iPad:** Apple doesn't let websites show an install button, so the window shows the two taps:
-  *Share → Add to Home Screen*.
+Or just use it in the browser: **[epinnn14.github.io/corkboard](https://epinnn14.github.io/corkboard/)**.
 
-No app store, no account, works offline. To remove it, uninstall it like any other app.
+## How to use it
 
-### Windows app: the desktop widget
+The first time, you see every board: **Start here** (what corkboard is, with a *How to use* note), a **Weekly planner**
+already filled in (its times are in the agenda and the widget straight away) and a **Kanban**. Change them, or remove
+them with a board's *Delete* button.
 
-**[⬇️ Download corkboard.exe](https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard.exe)**
+![First open: Start here, a filled-in Weekly planner and a Kanban](docs/boards.jpg)
 
-Open the file: corkboard installs itself, starts, and puts its **widget on your desktop**: a tear-off calendar page
-and the time, today's reminders on a sticky note (tick them off right there) and what's coming up on an index card.
+| | |
+|---|---|
+| Add a note | double-click the board, or use the dock at the bottom |
+| Write | click a note |
+| Move | drag a note (also onto another board); drag a board by its frame or name tag |
+| Pan / zoom | drag empty space · scroll wheel or pinch · `+` `−` · `0` shows every board |
+| Change a note | select it: colour, tape or pin, 📅 date, duplicate, remove |
+| Plan with times | write the time next to the thing: `gym 18.00`, under a `MONDAY` heading or with a day (`fri 3pm`) |
+| Tick things off | the checkbox in the agenda or the circle on the widget: the line gets crossed out |
+| Undo | the toast's **Undo**, or `Ctrl/⌘ + Z` |
+| Keys | `N` new sticky · `B` new board · `A` agenda · `Delete` remove · `Esc` deselect |
+| Keep / share | **Save** downloads the board as a PNG · **+** has new boards, import and export |
 
-<p align="center"><img src="docs/widget.jpg" width="640" alt="The corkboard widget in its Cork, Paper and Dark styles"></p>
+## Boards and notes
 
-- It shows **today's notes** to start with: the time-stamped lines of today's planner card, crossed out when you
-  tick them. **‹ ›** on the sticky flips to other days.
-- Pick what it shows (date & clock, the day's notes, coming up, a mini board) and its style (Cork, Paper, Dark, or
-  **Notes only**: just the papers on your desktop, no backdrop) from the widget's ⋯ menu → *Customize*.
-  A mini board's notes sit straight on the widget.
-- **Any size**: drag the bottom-left corner, or pick Auto / Small / Medium / Large / Custom. The smallest is one
-  sticky note (220 × 220); the biggest is your screen. Drag it by its top strip; it remembers where, and
-  *Show the widget* (tray or **+** menu) brings it to the top-right corner.
-- Click a reminder to open it in the full corkboard (Start menu / desktop shortcut). Both show the same boards:
-  change a note in one, the other follows.
-- **Closing the corkboard window keeps the widget** on your desktop (corkboard waits by the clock, in the tray).
-- **While the widget is on, corkboard starts with Windows**, so the widget and your **reminders** are there every day.
-  Close the widget yourself (⋯ → *Close widget*) and it stops starting with Windows, until you show it again.
-- Tray menu: open, customize, show the widget, keep it on top, start with Windows, quit.
-- Windows may say the publisher is unknown (the app isn't code-signed): *More info → Run anyway*.
-- The app keeps its own boards. To bring your website boards along: **+ → Backup** on the website,
-  then **+ → Import files** in the app.
-
-## Boards, as many as you want
-
-The workspace has no edges. Add a board for every class, client or side quest, drag boards
-around, zoom out to see everything, and drag a note from one board straight onto another.
+The workspace has no edges: add a board for every class, client or side quest, zoom out to see them all, and drag a
+note from one board straight onto another. Boards are landscape on wide screens and portrait on phones.
 
 ![The workspace zoomed out: six boards side by side](docs/workspace.jpg)
-
-New boards come blank or from a template:
 
 | Template | What's on it |
 |---|---|
@@ -79,151 +65,113 @@ New boards come blank or from a template:
 | 🌈 **Moodboard** | taped polaroids and vibe words on blush linen |
 | 💡 **Brainstorm** | one big question in the middle, a ring of rainbow stickies |
 
-![Template picker](docs/templates.jpg)
-
-## On every board
-
-- **Sticky notes** in 12 colours (canary to periwinkle) plus a picker for any colour you like.
-- **Index cards**, **lined paper** with a perforated edge, **cards** held by four pins.
-- **Polaroids** with your own photos (downscaled to stay light) and a handwritten caption.
-- **Stickers**: a sheet of 24 die-cut emoji (✨🔥💯✅📚☕🧠🚀🫶…).
-- **Washi tape** instead of a push-pin: pink stripes, mint dots, sun grid, kraft or lilac check.
-- **Four surfaces** per board: cork, midnight felt, blush linen, dot-grid paper.
-- Boards are **landscape on wide screens and portrait on phones**, picked automatically.
-
 <p align="center">
-  <img src="docs/toolbar.jpg" width="360" alt="A selected sticky note with its colour palette">
+  <img src="docs/toolbar.jpg" width="330" alt="A selected sticky note with its colour palette">
   &nbsp;
-  <img src="docs/mobile.jpg" width="220" alt="corkboard on a phone">
+  <img src="docs/mobile.jpg" width="200" alt="corkboard on a phone">
 </p>
 
-## How to use it
+- **Sticky notes** in 12 colours plus any colour you pick, **index cards**, **lined paper**, **cards** with four pins.
+- **Polaroids**: tap the picture to add your own photo, write a caption underneath.
+- **Stickers** (24 die-cut emoji), **washi tape** instead of a pin, four **surfaces**: cork, felt, linen, dot-grid paper.
 
-The first time you open corkboard you see all its boards: **Start here** (what corkboard is, and a *How to use* note),
-a **Weekly planner** already filled in (its times are in the Agenda and the widget straight away, so you can see how it
-works) and a **Kanban**. Change them, or delete them with the board's *Delete* button.
+## Agenda
 
-![First open: Start here, a filled-in Weekly planner and a Kanban](docs/boards.jpg)
+<img src="docs/agenda.jpg" width="270" align="right" alt="The agenda: a box per day, times in boxes, ticked items crossed out, your own notes under each">
 
-| | |
-|---|---|
-| Add a note | double-click the board, or use the dock at the bottom |
-| Write | click a note |
-| Move | drag a note (also onto another board), drag a board by its frame or name tag |
-| Pan / zoom | drag empty space · scroll wheel or pinch · `+` `−` · `0` shows everything |
-| Change a note | select it: colour, tape/pin, duplicate, remove |
-| Undo | the toast's **Undo**, or `Ctrl/⌘ + Z` (notes, cleared boards and deleted boards) |
-| Plan with times | write the time next to the thing: `gym 18.00`, under a `MONDAY` heading or with a day (`fri 3pm`); it's in the Agenda and the widget, and rings at the time |
-| Dates | select a note → 📅: pick a day and time, a reminder (at time, 10 min, 1 h, 1 day before); tap the chip to tick it done |
-| Tick things off | the checkbox in the Agenda or the circle on the widget: the line gets crossed out |
-| Keys | `N` new sticky · `B` new board · `A` agenda · `Delete` remove · `Esc` deselect |
-| Keep / share | **Save** downloads the current board as a PNG · the **+** menu has New board, Import and Export (below) |
+- **Times you write go on the agenda by themselves.** Under a `MONDAY` heading, `buy milk 10.00` becomes
+  *Monday 10:00 · buy milk*. It reads `10.00`, `10:00`, `3pm`, `7.30 pm`, `jam 10`, `pukul 14.15`, and days as
+  *today*, *tomorrow / besok*, weekday names in English or Indonesian, `12/11`, `12 Nov`, `2026-11-12`.
+- **A box per day** (Overdue, Today, Tomorrow, then each day), every item with its time. Tick one and it's crossed
+  out, in the agenda and in the note. Under each item, **+ add a note** for your own details.
+- **Dates and reminders** on any note with 📅: a day, a time, and a reminder at the time, 10 min, 1 h or 1 day before.
+- Reminders pop up while corkboard is open; on Windows the widget keeps it open all day.
+- **📆 Add to my calendar** puts everything still to come into Windows Calendar, Outlook, Google or Apple Calendar (.ics).
 
-## Dates, reminders & widget
+## Desktop widget
 
-<img src="docs/agenda.jpg" width="280" align="right" alt="The agenda: a box per day, times in boxes, ticked items crossed out, your own notes under each">
+<p align="center"><img src="docs/widget.jpg" width="640" alt="The widget in its Cork, Paper, Dark and Notes only styles"></p>
 
-- **Times written in a note go on the agenda by themselves**: under a `MONDAY` heading, `buy milk 10.00` becomes
-  *Monday 10:00 · buy milk*. It reads 10.00, 10:00, 3pm, 7.30 pm, “jam 10”, “pukul 14.15”; days as today,
-  tomorrow/besok, weekday names in English or Indonesian, 12/11, 12 Nov, 2026-11-12. Tick one in the agenda or the
-  widget and the line gets crossed out in the note too.
-- **Agenda** (top right, or `A`): a box per day (Overdue, Today, Tomorrow, then each day), each item with its time in
-  a box. Ticked items stay where they are, crossed out. Under each one, **+ add a note** for your own details
-  ("bring the racket"). Click an item to jump to its note; **📆 Add to my calendar** exports everything still to come.
-- **Due dates** on any note show a chip (overdue red, today orange, done ticked).
-- **Reminders** pop up as a banner and a system notification while corkboard is open (a tab or the installed app).
-  For reminders when it is closed, use **Add to calendar** in the date editor: an `.ics` file with an alarm
-  (Windows Calendar, Outlook, Apple, Google) or a Google Calendar link.
-- **Install as an app** (see [Install](#install)): works offline and gets its own icon, with shortcuts to *Widget*
-  and *Agenda*.
-- **Desktop widget** (**+** → *Desktop widget*): pick what to show (date & clock, today's reminders, the coming 7 days,
-  a mini board) and a style (Cork, Paper, Dark), with a live preview. Get it on your desktop with the
-  [Windows app](#windows-app-the-desktop-widget), or *Open widget* in a small browser window.
-- **Widget mode** (`#widget`): the same widget in the current window, handy from the home-screen shortcut on a phone.
+- A tear-off calendar page with the time, and **today's notes** on a sticky. Tick them off right there; **‹ ›**
+  flips to other days. Add *Coming up* (the next 7 days) or a mini board if you like.
+- Four styles: **Cork**, **Paper**, **Dark**, or **Notes only** (just the papers on your desktop).
+- **Any size**, from one sticky note up to the whole screen: drag its bottom-left corner, or pick a size in *Customize*.
+  Move it by its top middle. *Show the widget* brings it to the top-right corner.
+- In the Windows app it stays on the desktop when you close corkboard, and **starts with Windows while it's on**.
+  Close the widget yourself (⋯ → *Close widget*) and it stops starting with Windows, until you show it again.
+- On a phone or in the browser: **+** → *Desktop widget* → *Open widget*, or *Widget mode*.
 
 ## Import & export
 
-The **+** menu (top left, next to *Boards*) adds boards, turns files into boards and boards into files.
-
-**Import** (pick several files at once):
+**Import** from the **+** menu (several files at once):
 
 | File | Becomes |
 |---|---|
-| `.txt`, `.html` | a board named after the file; short paragraphs → sticky notes, medium → index cards, long → lined paper; bullet lists → one sticky per item |
-| `.md` | same, plus `# Title` names the board and `## Headings` become index cards |
-| `.csv` | one note per row, labelled by the header (`Due: Fri`) |
-| `.pdf` | the PDF's text, split into paragraphs (pdf.js) |
-| `.docx` | the Word document's text (mammoth) |
+| `.txt`, `.html` | a board named after the file: short paragraphs → stickies, longer → index cards or lined paper |
+| `.md` | the same, `# Title` names the board and `## Headings` become index cards |
+| `.csv` | one note per row, labelled by the header |
+| `.pdf`, `.docx` | the document's text, split into notes |
 | images | polaroids on the current board |
 | `.json` | a corkboard backup |
 
-Big files flow onto extra boards ("Lecture (1)", "Lecture (2)" …).
+**Export** every board as Word, PDF (a picture of each board plus all the text), plain text, Markdown or a JSON backup.
+The backup is also how you move boards between the website and the Windows app.
 
-**Export all boards as:** Word (.docx, sticky colours as shading, photos embedded) · PDF (a picture of each board
-plus every note as searchable text) · plain text · Markdown (for Notion/Obsidian) · JSON backup.
-
-## Run it
+## For developers
 
 ```bash
 npm install
 npm run dev       # http://localhost:5173
 npm test          # 94 tests
-npm run build     # static site in dist/ (relative paths, host it anywhere)
+npm run build     # the website in dist/ (relative paths, host it anywhere)
 ```
-
-Pushing to `main` runs the tests and deploys to GitHub Pages
-(*Settings → Pages → Source: GitHub Actions*), and builds `corkboard.exe` on a Windows runner and attaches it
-to the GitHub release of the current version (`desktop/package.json`).
 
 The Windows app (Electron) is in `desktop/`:
 
 ```bash
-npm run build                 # the website, in dist/
+npm run build                 # the website first
 cd desktop && npm install
 npm start                     # run it
-npm run dist                  # desktop/release/corkboard.exe (run on Windows)
-``` Workspaces from v1.0 (single board) are migrated automatically.
+npm run dist                  # desktop/release/corkboard.exe (on Windows)
+```
 
-## How it's built
+Every push to `main` runs the tests, deploys the website to GitHub Pages and builds `corkboard.exe` on a Windows
+runner for the release of the current version. Boards saved by older versions are upgraded automatically.
 
-Vue 3 (`<script setup>`) · Pinia · TypeScript · Vite · idb-keyval · html-to-image · pdf.js · mammoth · docx · jsPDF ·
-vite-plugin-pwa · Electron (Windows app) · Fontsource (Bricolage Grotesque, Caveat, Patrick Hand) · Vitest + Vue Test Utils + fake-indexeddb
+**Built with** Vue 3 · Pinia · TypeScript · Vite · vite-plugin-pwa · Electron · idb-keyval · html-to-image · pdf.js ·
+mammoth · docx · jsPDF · Fontsource (Bricolage Grotesque, Caveat, Patrick Hand) · Vitest.
+
+<details>
+<summary>Project layout</summary>
 
 ```
 src/
 ├── core/                 plain TypeScript, no Vue
 │   ├── board.ts          notes, colours, stickers, tapes, surfaces, safe parsing
-│   ├── workspace.ts      camera (fit, zoom-at-cursor), board placement, hit-testing, file import + v1 migration
-│   ├── templates.ts      planner / kanban / study / moodboard / brainstorm layouts (work in both orientations)
-│   ├── convert.ts        text / markdown / csv → packed notes across boards, notes → txt / md
-│   ├── io.ts             file readers (pdf.js, mammoth) and writers (docx, jsPDF), loaded on demand
-│   ├── dates.ts          due dates, agenda groups, reminder timing, .ics and Google Calendar links
-│   ├── desk.ts           desktop widget settings, window sizes, today/coming-up lists
-│   ├── detect.ts         times and days written in notes → agenda items; crossing a line out
-│   ├── desktop.ts        the bridge to the Windows app (widget window, settings)
-│   ├── sync.ts           autosave + keeping several corkboard windows in step (BroadcastChannel)
-│   ├── install.ts        device/browser detection and install steps
-│   ├── notify.ts         system notifications (through the service worker when installed)
-│   ├── texture.ts        cork, felt, linen and dot-grid surfaces painted on a canvas
-│   └── storage.ts        IndexedDB persistence
-├── stores/workspace.ts   Pinia: boards, notes, cross-board drops, undo
-└── components/
-    ├── Workspace.vue     the endless canvas: pan, wheel/pinch zoom
-    ├── BoardView.vue     one framed board with its name tag
-    ├── NoteItem.vue      one note: drag, edit, paper styles, stickers, tape, toolbar, due chip
-    ├── DueEditor.vue     date, reminder and add-to-calendar popover
-    ├── AgendaPanel.vue   every dated note across boards
-    ├── WidgetView.vue    the widget (#widget): calendar page, today, coming up, mini board
-    ├── DeskSheet.vue     "Desktop widget": what it shows, its style, the Windows app or a pop-up
-    ├── InstallSheet.vue  the #install window: one-click install or the steps for this device
-    └── PushPin.vue
-desktop/                  the Windows app (Electron)
+│   ├── workspace.ts      camera, board placement, hit-testing, file import
+│   ├── templates.ts      planner / kanban / study / moodboard / brainstorm layouts
+│   ├── convert.ts        text / markdown / csv → notes, notes → txt / md
+│   ├── io.ts             file readers (pdf.js, mammoth) and writers (docx, jsPDF)
+│   ├── dates.ts          due dates, agenda days, reminders, .ics
+│   ├── detect.ts         times and days written in notes → agenda items
+│   ├── desk.ts           widget settings, sizes, the day's list
+│   ├── desktop.ts        the bridge to the Windows app
+│   ├── sync.ts           autosave, keeping several windows in step
+│   ├── install.ts        install steps per device and browser
+│   ├── notify.ts         system notifications
+│   ├── texture.ts        cork, felt, linen and paper surfaces drawn on a canvas
+│   └── storage.ts        IndexedDB
+├── stores/workspace.ts   Pinia: boards, notes, drops between boards, undo
+└── components/           Workspace, BoardView, NoteItem, DueEditor, AgendaPanel,
+                          WidgetView, DeskSheet, InstallSheet, PushPin
+desktop/
 ├── main.cjs              tray, the widget window, the app window, start with Windows
 └── preload.cjs           window.corkboardDesktop for the web app
 ```
 
-Everything on screen is drawn with CSS, SVG and canvas: no image assets.
-See [ROADMAP.md](ROADMAP.md).
+</details>
+
+Everything on screen is drawn with CSS, SVG and canvas. See [ROADMAP.md](ROADMAP.md) for what's next.
 
 ## License
 
