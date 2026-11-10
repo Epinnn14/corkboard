@@ -37,6 +37,22 @@ install window ready for the device you're on:
 No app store, no account, about 1 MB, works offline. To remove it, uninstall it like any other app.
 For security, browsers always ask you to confirm; no website can install itself silently.
 
+### Windows app: your board as the wallpaper
+
+**[⬇️ Download corkboard for Windows](https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard-Setup.exe)**
+
+Open the file: corkboard installs itself, starts, and puts your **Weekly planner on the desktop as the wallpaper**,
+behind your icons. No extra apps.
+
+- **Double-click the board** on the desktop (or click the corkboard icon by the clock) to edit it: write, drag,
+  add notes, change colours and dates. Press **Done** (or Esc) and it goes back behind the icons.
+- The same app has the full corkboard (Start menu / desktop shortcut). Change a note in one, the other follows.
+- It sits in the tray and **starts with Windows**, so the wallpaper and your **reminders** are there all day.
+  Tray menu: edit, open, wallpaper on/off, *Behind the icons* or *Simple* style, start with Windows, quit.
+- Windows may say the publisher is unknown (the app isn't code-signed): *More info → Run anyway*.
+- The app keeps its own boards. To bring your website boards along: **+ → Backup** on the website,
+  then **+ → Import files** in the app.
+
 ## Boards, as many as you want
 
 The workspace has no edges. Add a board for every class, client or side quest, drag boards
@@ -95,23 +111,15 @@ New boards come blank or from a template:
   (Windows Calendar, Outlook, Apple, Google) or a Google Calendar link.
 - **Install as an app** (see [Install](#install)): works offline and gets its own icon, with shortcuts to *Widget*
   and *Agenda*.
-- **Your board as the wallpaper** (**+** → *Add to desktop*, or open `#wall`): just one board (your Weekly planner
-  by default) on a plain background, filling the screen and fully editable: click a note to write, drag it,
-  double-click to add one. Everything else hides in one round 📌 button at the bottom right (add notes, agenda,
-  another board, light/dark background, full screen, open the full app).
-  - **As the real wallpaper:** in [Lively Wallpaper](https://github.com/Lively-wallpaper/lively) press **+** and paste
-    `https://epinnn14.github.io/corkboard/#wall`, then *Settings → Wallpaper → Interaction → Wallpaper input*:
-    Mouse (and Keyboard to type). The board sits behind your desktop icons and you edit it right there, no export.
-    Lively has its own built-in browser, so the wallpaper keeps its own boards (optionally starting from a copy of one).
-  - **Same boards as the app:** *Open full screen* opens it in its own window (saved together, reminders on); press F11.
-- **Add to desktop** (in the **+** menu): pick what to show (date & clock, today's reminders, the coming 7 days,
-  a mini board) and a style (Sticky, Paper, Dark), with a live preview. Then either
+- **Your board as the wallpaper**: the [Windows app](#windows-app-your-board-as-the-wallpaper) puts it behind your
+  desktop icons. On the website, **+** → *Add to desktop* → *Open full screen* (or `#wall`) shows just one board
+  (your Weekly planner by default) on a plain background, fully editable, with everything else in one round 📌
+  button at the bottom right (add notes, agenda, another board, light/dark background, full screen, open the app).
+- **Desktop widget** (**+** → *Add to desktop*): pick what to show (date & clock, today's reminders, the coming 7 days,
+  a mini board) and a style (Sticky, Paper, Dark), with a live preview, then
   - **Open widget**: a small corkboard window for your desktop. Set it to start with Windows
     (Edge: `edge://apps` → ⋯ → *Auto-start on device login*; Chrome: `chrome://apps` → right-click →
     *Start app when you sign in*) and your reminders pop up every day without opening anything.
-  - **Copy wallpaper link** for [Lively Wallpaper](https://github.com/Lively-wallpaper/lively): a live wallpaper
-    behind your desktop icons (board on the left, today's list on the right, ticking clock). Lively runs its own
-    browser, so the link carries a small copy of your reminders and board (no photos); copy it again after changes.
 - **Widget mode** (`#widget`): the same widget in the current window, handy from the home-screen shortcut on a phone.
 - **Wallpapers** (in the **+** menu): *Desktop wallpaper* (2560×1440) and *Phone wallpaper* (1170×2532, with the top
   third left clear for the lock-screen clock), so the whole board fits instead of being cropped.
@@ -142,17 +150,27 @@ plus every note as searchable text) · plain text · Markdown (for Notion/Obsidi
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 80 tests
+npm test          # 83 tests
 npm run build     # static site in dist/ (relative paths, host it anywhere)
 ```
 
 Pushing to `main` runs the tests and deploys to GitHub Pages
-(*Settings → Pages → Source: GitHub Actions*). Workspaces from v1.0 (single board) are migrated automatically.
+(*Settings → Pages → Source: GitHub Actions*), and builds `corkboard-Setup.exe` on a Windows runner and attaches it
+to the GitHub release of the current version (`desktop/package.json`).
+
+The Windows app (Electron) is in `desktop/`:
+
+```bash
+npm run build                 # the website, in dist/
+cd desktop && npm install
+npm start                     # run it (on Linux/macOS the wallpaper is a normal window)
+npm run dist                  # Windows installer in desktop/release/ (run on Windows)
+``` Workspaces from v1.0 (single board) are migrated automatically.
 
 ## How it's built
 
 Vue 3 (`<script setup>`) · Pinia · TypeScript · Vite · idb-keyval · html-to-image · pdf.js · mammoth · docx · jsPDF ·
-vite-plugin-pwa · Fontsource (Bricolage Grotesque, Caveat, Patrick Hand) · Vitest + Vue Test Utils + fake-indexeddb
+vite-plugin-pwa · Electron + koffi (Windows app) · Fontsource (Bricolage Grotesque, Caveat, Patrick Hand) · Vitest + Vue Test Utils + fake-indexeddb
 
 ```
 src/
@@ -163,7 +181,9 @@ src/
 │   ├── convert.ts        text / markdown / csv → packed notes across boards, notes → txt / md
 │   ├── io.ts             file readers (pdf.js, mammoth) and writers (docx, jsPDF), loaded on demand
 │   ├── dates.ts          due dates, agenda groups, reminder timing, .ics and Google Calendar links
-│   ├── desk.ts           desktop widget settings, today/coming-up lists, wallpaper snapshots in the link
+│   ├── desk.ts           desktop widget and wallpaper settings, today/coming-up lists, snapshots in links
+│   ├── desktop.ts        the bridge to the Windows app (wallpaper edit mode, settings)
+│   ├── sync.ts           autosave + keeping several corkboard windows in step (BroadcastChannel)
 │   ├── install.ts        device/browser detection and install steps
 │   ├── notify.ts         system notifications (through the service worker when installed)
 │   ├── wallpaper.ts      desktop and phone wallpaper layouts
@@ -176,11 +196,15 @@ src/
     ├── NoteItem.vue      one note: drag, edit, paper styles, stickers, tape, toolbar, due chip
     ├── DueEditor.vue     date, reminder and add-to-calendar popover
     ├── AgendaPanel.vue   every dated note across boards
-    ├── WidgetView.vue    the desktop widget (#widget): window, Lively wallpaper and preview
+    ├── WidgetView.vue    the desktop widget (#widget) and its preview
     ├── WallView.vue      one board as the wallpaper (#wall), editable, with the round 📌 menu
-    ├── DeskSheet.vue     "Add to desktop": pick what it shows, open it or copy the wallpaper link
+    ├── DeskSheet.vue     "Add to desktop": the Windows app / wallpaper settings and the widget
     ├── InstallSheet.vue  the #install window: one-click install or the steps for this device
     └── PushPin.vue
+desktop/                  the Windows app (Electron)
+├── main.cjs              tray, the wallpaper window and its edit mode, the app window, start with Windows
+├── win32.cjs             Win32 calls (koffi) to sit behind the desktop icons and notice a double-click there
+└── preload.cjs           window.corkboardDesktop for the web app
 ```
 
 Everything on screen is drawn with CSS, SVG and canvas: no image assets.
