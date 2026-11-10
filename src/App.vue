@@ -29,7 +29,6 @@ import {
 } from './core/desk';
 import { desktop } from './core/desktop';
 import { showNotification } from './core/notify';
-import { composeWallpaper, type WallpaperKind } from './core/wallpaper';
 import { useNow } from './composables/now';
 import { useWorkspace } from './stores/workspace';
 import AgendaPanel from './components/AgendaPanel.vue';
@@ -386,17 +385,6 @@ function downloadBlob(blob: Blob, name: string) {
 
 const busy = ref(false);
 
-async function saveWallpaper(kind: WallpaperKind) {
-  fileOpen.value = false;
-  const board = store.active;
-  if (!board) return say('Add a board first');
-  store.select(null);
-  await nextTick();
-  const img = await renderBoard(board, 2);
-  if (!img) return say('Could not render the board in this browser');
-  download(await composeWallpaper(img, kind), `${slug(board.title)}-${kind}-wallpaper.png`);
-  say(kind === 'phone' ? 'Phone wallpaper saved. Set it from your Photos/Gallery app' : 'Desktop wallpaper saved. Right-click it → Set as desktop background');
-}
 
 async function exportAs(format: ExportFormat) {
   fileOpen.value = false;
@@ -595,14 +583,6 @@ onBeforeUnmount(() => {
           <button class="menu-item" role="menuitem" data-action="widget" @click="openWidget">
             <span class="mi-ico" aria-hidden="true">🗓️</span>
             <span class="mi-title">Widget mode<small>date, clock, what's next + a mini board</small></span>
-          </button>
-          <button class="menu-item" role="menuitem" data-action="wall-desktop" :disabled="busy" @click="saveWallpaper('desktop')">
-            <span class="mi-ico" aria-hidden="true">🖥️</span>
-            <span class="mi-title">Desktop wallpaper<small>this board, 2560 × 1440</small></span>
-          </button>
-          <button class="menu-item" role="menuitem" data-action="wall-phone" :disabled="busy" @click="saveWallpaper('phone')">
-            <span class="mi-ico" aria-hidden="true">📱</span>
-            <span class="mi-title">Phone wallpaper<small>this board, room for the lock-screen clock</small></span>
           </button>
           <button v-if="!installed" class="menu-item" role="menuitem" data-action="install" @click="openInstall">
             <span class="mi-ico" aria-hidden="true">⬇️</span>

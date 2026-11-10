@@ -115,7 +115,7 @@ describe('top bar', () => {
     const names = wrapper.findAll('.file-menu .menu-item .mi-title').map((t) => t.element.firstChild?.textContent?.trim());
     expect(names).toEqual([
       'New board', 'Import files', 'Word', 'PDF', 'Text', 'Markdown', 'Backup',
-      'Desktop widget', 'Widget mode', 'Desktop wallpaper', 'Phone wallpaper', 'Install app',
+      'Desktop widget', 'Widget mode', 'Install app',
     ]);
     expect(wrapper.find('input[type=file][multiple]').attributes('accept')).toContain('.docx');
     wrapper.unmount();
