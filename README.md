@@ -25,8 +25,10 @@ meetings, and anyone who thinks better with paper on a wall.
 |---|---|
 | **Windows** | The button downloads `corkboard.exe`. Open it: corkboard installs itself, starts, and puts its widget on your desktop. If Windows says the publisher is unknown (the app isn't code-signed): *More info → Run anyway*. |
 | **Mac** | The button downloads `corkboard-mac.dmg` (Apple silicon and Intel). Open it and drag corkboard into **Applications**. The first time, macOS can't check the app (it isn't signed by Apple): click *Done*, then *System Settings → Privacy & Security → Open Anyway*. |
-| **iPhone / iPad** | Apple only lets the App Store install apps, so corkboard installs from Safari: tap **Share** (bottom on iPhone, top right on iPad; on iOS 26 tap **⋯** first) → *Add to Home Screen* → *Add*. |
-| **Android** | The button opens corkboard with an **Install now** button (or Chrome's *⋮ → Install app*). |
+| **iPhone / iPad** | Apple only lets the App Store install apps, so corkboard goes on the home screen from the browser (its own icon, offline). **Safari:** tap **Share ⬆**: top right on iPad (left of **+**, not the ≡ menu by the address); on iPhone tap **⋯** at the bottom right first. **Chrome:** Share ⬆ in the address bar. **Edge:** ⋯ → Share. **Firefox:** ≡ → Share. Then *Add to Home Screen* → *Add*. The install window shows an arrow pointing at the button. |
+| **Android** | The button opens corkboard with an **Install now** button. Or from the menu: Chrome / Opera / Brave *⋮ → Install app*, Samsung Internet *≡ → Add page to → Home screen*, Edge *⋯ → Add to phone*, Firefox *⋮ → Add app to Home screen*. |
+
+The Windows and Mac downloads work from any browser (Chrome, Edge, Safari, Firefox, Opera …).
 
 On Windows and Mac it runs **on your computer, no internet needed**: boards are saved there, the date and time follow
 the computer's clock, reminders pop up as notifications, and the widget starts with the computer while it's on.
@@ -140,7 +142,7 @@ The backup is also how you move boards between the website and the desktop app.
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 97 tests
+npm test          # 98 tests
 npm run build     # the website in dist/ (relative paths, host it anywhere)
 ```
 

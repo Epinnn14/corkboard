@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { browserGuide, detectBrowser, detectDevice, installGuide, platformFromHash } from '../src/core/install';
+import { browserGuide, detectBrowser, detectDevice, installGuide, isIpad, platformFromHash } from '../src/core/install';
 
 const UA = {
   winEdge: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0',
@@ -36,16 +36,34 @@ describe('install', () => {
     const ios = installGuide('ios', 'safari');
     expect(ios.oneClick).toBe(false);
     expect(ios.steps.join(' ')).toContain('Add to Home Screen');
-    expect(installGuide('ios', 'chrome').note).toMatch(/Safari/);
+    expect(installGuide('ios', 'chrome').steps[0]).toMatch(/Share .* address bar/);
     expect(installGuide('other', 'firefox').steps.join(' ')).toMatch(/Chrome or Edge/);
+    expect(browserGuide('firefox', 'mac').steps.join(' ')).toMatch(/download/);
   });
 
   it('has its own download for Windows and Mac, and the right Share button on iPad', () => {
     expect(installGuide('windows', 'edge').download?.href).toMatch(/corkboard\.exe$/);
     expect(installGuide('mac', 'safari').download?.href).toMatch(/corkboard-mac\.dmg$/);
     expect(installGuide('mac', 'safari').steps.join(' ')).toMatch(/Applications/);
-    expect(installGuide('ios', 'safari').steps.join(' ')).toMatch(/top right .* iPad/);
+    expect(installGuide('ios', 'safari').steps[0]).toMatch(/^iPad: .*top right/);
+    expect(installGuide('ios', 'safari', { ipad: true }).steps[0]).toMatch(/^Tap the Share .*top right.*not the ≡ menu/);
+    expect(installGuide('ios', 'safari', { ipad: true }).point).toBe('top-right');
+    expect(installGuide('ios', 'safari', { ipad: false }).steps[0]).toMatch(/⋯ at the bottom right/);
+    expect(isIpad(UA.ipad, 5)).toBe(true);
+    expect(isIpad(UA.iphone, 5)).toBe(false);
     expect(installGuide('android', 'chrome').download).toBeUndefined();
+  });
+
+  it('has steps for every browser on phones, tablets and laptops', () => {
+    for (const b of ['safari', 'chrome', 'edge', 'firefox'] as const) {
+      expect(installGuide('ios', b).steps.join(' ')).toMatch(/Add to Home Screen/);
+      expect(installGuide('ios', b, { ipad: true }).pointLabel).toBeTruthy();
+    }
+    for (const b of ['chrome', 'samsung', 'edge', 'firefox', 'other'] as const) {
+      expect(installGuide('android', b).steps.length).toBeGreaterThan(1);
+    }
+    expect(browserGuide('firefox', 'windows').steps[0]).toMatch(/web apps button/);
+    expect(browserGuide('other').oneClick).toBe(true); // Opera, Brave …
   });
 
   it('opens on the tab a link asks for', () => {
