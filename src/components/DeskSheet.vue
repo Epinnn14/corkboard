@@ -6,15 +6,18 @@ import {
   DESK_THEMES,
   type DeskConfig,
   type DeskPart,
+  boardSnapshot,
+  defaultWallBoard,
   deskHash,
   deskWindowSize,
   encodeSnapshot,
   makeSnapshot,
+  wallHash,
 } from '../core/desk';
 import WidgetView from './WidgetView.vue';
 
 const props = defineProps<{ boards: readonly Board[]; initial: DeskConfig }>();
-const emit = defineEmits<{ close: []; save: [DeskConfig]; open: [DeskConfig] }>();
+const emit = defineEmits<{ close: []; save: [DeskConfig]; open: [DeskConfig]; wall: [boardId: string | null] }>();
 
 const cfg = ref<DeskConfig>({ ...props.initial, wall: false, boardId: props.initial.boardId ?? props.boards[0]?.id ?? null });
 watch(cfg, (c) => emit('save', { ...c, wall: false }), { deep: true });
@@ -42,6 +45,24 @@ async function copyWall() {
 }
 watch(cfg, () => (wallLink.value = ''), { deep: true });
 
+// the board itself as the wallpaper, editable
+const wallBoardId = ref<string | null>(defaultWallBoard(props.boards, null)?.id ?? null);
+const boardLink = ref('');
+const boardCopied = ref(false);
+async function copyBoardWall() {
+  const b = props.boards.find((x) => x.id === wallBoardId.value);
+  if (!b) return;
+  boardLink.value = base() + wallHash(b.id, 'light', await encodeSnapshot(boardSnapshot(b)));
+  try {
+    await navigator.clipboard.writeText(boardLink.value);
+    boardCopied.value = true;
+    setTimeout(() => (boardCopied.value = false), 4000);
+  } catch {
+    boardCopied.value = false;
+  }
+}
+watch(wallBoardId, () => (boardLink.value = ''));
+
 const previewCfg = computed(() => ({ ...cfg.value, wall: false }));
 
 // the preview is the real widget window, scaled down to fit
@@ -66,6 +87,33 @@ const pscale = computed(() => Math.min(1, (pw.value.w - 16) / win.value.w, (pw.v
         <button class="ghost" @click="emit('close')">Close</button>
       </header>
 
+      <article class="desk-way desk-board-wall">
+        <div>
+          <h3>🖼️ Your board as the wallpaper</h3>
+          <p>
+            Just the board on a plain background, full screen. Click a note to write, drag it, double-click to add one.
+            Everything else hides in one round 📌 button at the bottom right.
+          </p>
+          <label class="desk-board">
+            <span>Board</span>
+            <select v-model="wallBoardId" data-field="wall-board">
+              <option v-for="b in boards" :key="b.id" :value="b.id">{{ b.title }}</option>
+            </select>
+          </label>
+          <button class="solid" data-action="board-wall-open" @click="emit('wall', wallBoardId)">Open full screen</button>
+          <button class="ghost" data-action="board-wall-copy" @click="copyBoardWall">
+            {{ boardCopied ? 'Link copied ✓' : 'Copy link for Lively' }}
+          </button>
+          <input v-if="boardLink && !boardCopied" class="desk-link" readonly :value="boardLink" @focus="($event.target as HTMLInputElement).select()" />
+        </div>
+        <p class="desk-tip">
+          <b>Full screen</b> is the same corkboard as here (saved together, reminders on). Press <b>F11</b> or 📌 → Full screen.<br />
+          <b>Lively:</b> paste the link with <b>+</b>, and set Lively's wallpaper input to <i>Mouse</i> so clicks reach the
+          board. Lively keeps its own copy of the board, so what you change on the wallpaper stays on the wallpaper.
+        </p>
+      </article>
+
+      <h3 class="desk-or">Or a widget with just what you need</h3>
       <div class="desk-grid">
         <div class="desk-pick">
           <p class="desk-label">Show</p>

@@ -308,3 +308,87 @@ describe('add to desktop', () => {
     wrapper.unmount();
   });
 });
+
+describe('board wallpaper (#wall)', () => {
+  it('shows only the weekly planner, editable, with everything else behind one round button', async () => {
+    window.location.hash = '#wall';
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    const planner = store.addBoard('landscape', 'week');
+    store.setActive(store.boards[0].id);
+    const wrapper = mount(App, { attachTo: document.body });
+    expect(wrapper.find('.bar').exists()).toBe(false);
+    expect(wrapper.find('.dock').exists()).toBe(false);
+    expect(wrapper.findAll('.wallview .board')).toHaveLength(1);
+    expect(wrapper.find('.wallview .board').attributes('data-board-id')).toBe(planner.id);
+    expect(store.lockedBoardId).toBe(planner.id);
+    expect(wrapper.find('.fab-menu').exists()).toBe(false);
+
+    // edit straight on the wallpaper
+    const before = store.board(planner.id)!.notes.length;
+    await wrapper.find('[data-action=fab]').trigger('click');
+    expect(wrapper.find('.fab-menu').text()).toContain('Weekly planner');
+    await wrapper.find('[data-add=sticky]').trigger('click');
+    expect(store.board(planner.id)!.notes).toHaveLength(before + 1);
+    expect(wrapper.find('.fab-menu').exists()).toBe(false);
+    const ta = wrapper.find('.wallview .note.selected textarea, .wallview .note textarea');
+    expect(ta.exists()).toBe(true);
+
+    // switch board and background from the same button
+    await wrapper.find('[data-action=fab]').trigger('click');
+    await wrapper.findAll('.fab-item').find((b) => b.text().includes('another board'))!.trigger('click');
+    await wrapper.findAll('.fab-boards button')[0].trigger('click');
+    expect(wrapper.find('.wallview .board').attributes('data-board-id')).toBe(store.boards[0].id);
+    expect(window.location.hash).toBe(`#wall?board=${store.boards[0].id}`);
+    await wrapper.find('[data-action=fab]').trigger('click');
+    await wrapper.find('[data-action=wall-bg]').trigger('click');
+    expect(wrapper.find('.wallview.bg-dark').exists()).toBe(true);
+    expect(wrapper.find('.fab-menu').exists()).toBe(true); // stays open to compare backgrounds
+
+    await wrapper.find('[data-action=wall-open]').trigger('click');
+    await new Promise((r) => setTimeout(r));
+    expect(wrapper.find('.bar').exists()).toBe(true);
+    expect(store.lockedBoardId).toBeNull();
+    window.location.hash = '';
+    wrapper.unmount();
+  });
+
+  it('Add to desktop opens it full screen, or copies a Lively link that brings the board along', async () => {
+    localStorage.clear();
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    const planner = store.addBoard('landscape', 'week');
+    store.updateNote(planner.notes[0].id, { text: 'MONDAY\n- gym' });
+    const open = vi.spyOn(window, 'open').mockReturnValue({} as Window);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const wrapper = mount(App, { attachTo: document.body });
+    await wrapper.find('.bar .solid.plus').trigger('click');
+    await wrapper.find('[data-action=desk]').trigger('click');
+    expect((wrapper.find('[data-field=wall-board]').element as HTMLSelectElement).value).toBe(planner.id);
+    await wrapper.find('[data-action=board-wall-copy]').trigger('click');
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalled());
+    const link = writeText.mock.calls[0][0] as string;
+    expect(link).toMatch(new RegExp(`#wall\\?board=${planner.id}&snap=z`));
+    await wrapper.find('[data-action=board-wall-open]').trigger('click');
+    expect(open.mock.calls[0][0]).toMatch(new RegExp(`#wall\\?board=${planner.id}$`));
+    expect(open.mock.calls[0][1]).toBe('corkboard-wall');
+    open.mockRestore();
+    wrapper.unmount();
+
+    // Lively: its own empty storage, only the link
+    setActivePinia(createPinia());
+    const fresh = useWorkspace();
+    fresh.replace({ version: 2, boards: [], camera: null });
+    window.location.hash = link.slice(link.indexOf('#'));
+    const wall = mount(App, { attachTo: document.body });
+    await vi.waitFor(() => expect(wall.find('.wallview .board').exists()).toBe(true));
+    expect(wall.find('.wallview .board').attributes('data-board-id')).toBe(planner.id);
+    expect(fresh.board(planner.id)!.notes[0].text).toBe('MONDAY\n- gym');
+    expect(wall.findAll('.wallview .note')).toHaveLength(planner.notes.length);
+    window.location.hash = '';
+    wall.unmount();
+  });
+});

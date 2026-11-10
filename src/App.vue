@@ -23,10 +23,14 @@ import {
   type DeskConfig,
   type DeskSnapshot,
   decodeSnapshot,
+  defaultWallBoard,
   deskHash,
   deskWindowSize,
   parseDeskHash,
+  parseWallHash,
   sanitizeDesk,
+  type WallBg,
+  wallHash,
 } from './core/desk';
 import { showNotification } from './core/notify';
 import { composeWallpaper, type WallpaperKind } from './core/wallpaper';
@@ -34,6 +38,7 @@ import { useNow } from './composables/now';
 import { useWorkspace } from './stores/workspace';
 import AgendaPanel from './components/AgendaPanel.vue';
 import DeskSheet from './components/DeskSheet.vue';
+import WallView from './components/WallView.vue';
 import InstallSheet from './components/InstallSheet.vue';
 import WidgetView from './components/WidgetView.vue';
 import Workspace from './components/Workspace.vue';
@@ -50,7 +55,8 @@ const sheetOpen = ref(false);
 const agendaOpen = ref(window.location.hash === '#agenda');
 const installOpen = ref(window.location.hash === '#install');
 const isWidget = () => window.location.hash.startsWith('#widget');
-const route = ref<'app' | 'widget'>(isWidget() ? 'widget' : 'app');
+const routeOf = (): 'app' | 'widget' | 'wall' => (isWidget() ? 'widget' : parseWallHash(window.location.hash) ? 'wall' : 'app');
+const route = ref(routeOf());
 const deskOpen = ref(false);
 const now = useNow();
 const attention = computed(() => attentionCount(store.boards, now.value));
@@ -98,14 +104,19 @@ async function checkReminders() {
 function revealNote(id: string) {
   ringing.value = null;
   agendaOpen.value = false;
-  if (route.value === 'widget') window.location.hash = '';
+  if (route.value === 'wall' && store.find(id)?.board.id === wallBoard.value?.id) {
+    store.select(id);
+    return;
+  }
+  if (route.value !== 'app') window.location.hash = '';
   const boardId = store.reveal(id);
   if (boardId) nextTick(() => space.value?.focusBoard(boardId));
 }
 
 function onHash() {
-  route.value = isWidget() ? 'widget' : 'app';
+  route.value = routeOf();
   readDesk();
+  readWall();
   if (window.location.hash === '#agenda') agendaOpen.value = true;
   if (window.location.hash === '#install') installOpen.value = true;
 }
@@ -219,6 +230,47 @@ function openDeskWindow(c: DeskConfig) {
 }
 function leaveWidget() {
   window.location.hash = '';
+}
+
+// ------------------------------------------- one board as the wallpaper
+const wall = ref<{ boardId: string | null; bg: WallBg }>({ boardId: null, bg: 'light' });
+const wallBoard = computed(() =>
+  route.value === 'wall' ? (store.board(wall.value.boardId ?? '') ?? defaultWallBoard(store.boards, store.active)) : null,
+);
+function readWall() {
+  const w = parseWallHash(window.location.hash);
+  if (!w) return;
+  wall.value = { boardId: w.boardId, bg: w.bg };
+  if (w.snap) {
+    // a wallpaper link opened in another browser (Lively): keep a copy of its board here once
+    void decodeSnapshot(w.snap).then((snap) => {
+      const b = snap?.boards.find((x) => x.id === w.boardId) ?? snap?.boards[0];
+      if (b) wall.value = { ...wall.value, boardId: store.adoptBoard(b).id };
+    });
+  }
+}
+readWall();
+watch(
+  wallBoard,
+  (b) => {
+    store.lockedBoardId = b?.id ?? null;
+    if (b && store.active?.id !== b.id) store.setActive(b.id);
+  },
+  { immediate: true },
+);
+function setWall(patch: Partial<{ boardId: string; bg: WallBg }>) {
+  wall.value = { ...wall.value, ...patch };
+  store.select(null);
+  const snap = new URLSearchParams(window.location.hash.slice(6)).get('snap') ?? undefined;
+  history.replaceState(null, '', wallHash(wall.value.boardId, wall.value.bg, snap));
+}
+function openWallWindow(boardId: string | null) {
+  const w = window.screen?.availWidth ?? 1440;
+  const h = window.screen?.availHeight ?? 900;
+  const url = window.location.href.replace(/#.*$/, '') + wallHash(boardId);
+  const win = window.open(url, 'corkboard-wall', `popup,width=${w},height=${h},left=0,top=0`);
+  if (!win) say('Your browser blocked the window. Allow pop-ups for corkboard and try again');
+  else deskOpen.value = false;
 }
 
 function viewportSize() {
@@ -380,6 +432,7 @@ function onKey(e: KeyboardEvent) {
     return;
   }
   if (editing() || e.ctrlKey || e.metaKey || e.altKey || route.value === 'widget') return;
+  if (route.value === 'wall' && !['Delete', 'Backspace', 'n', 'N', 'a', 'A', 'Escape'].includes(e.key)) return;
   if ((e.key === 'Delete' || e.key === 'Backspace') && store.selectedId) store.removeNote(store.selectedId);
   else if (e.key === 'n' || e.key === 'N') addNote('sticky');
   else if (e.key === 'b' || e.key === 'B') sheetOpen.value = true;
@@ -429,6 +482,40 @@ onBeforeUnmount(() => {
       <span class="ring-txt"><b>{{ ringing.title.replace('⏰ ', '') }}</b><small>{{ ringing.body }}</small></span>
       <button @click="revealNote(ringing.noteId)">Show</button>
       <button class="ghosty" @click="ringing = null">OK</button>
+    </div>
+  </div>
+  <div v-else-if="route === 'wall'" class="app">
+    <WallView
+      v-if="wallBoard"
+      :board="wallBoard"
+      :boards="store.boards"
+      :bg="wall.bg"
+      :attention="attention"
+      @pick="setWall({ boardId: $event })"
+      @bg="setWall({ bg: $event })"
+      @agenda="agendaOpen = true"
+      @desk="deskOpen = true"
+      @open="leaveWidget"
+    />
+    <DeskSheet
+      v-if="deskOpen"
+      :boards="store.boards"
+      :initial="loadDesk()"
+      @save="saveDesk"
+      @open="openDeskWindow"
+      @wall="openWallWindow"
+      @close="deskOpen = false"
+    />
+    <AgendaPanel v-if="agendaOpen" @close="agendaOpen = false" @reveal="revealNote" />
+    <div v-if="ringing" class="ring" role="alert">
+      <span class="ring-ico" aria-hidden="true">⏰</span>
+      <span class="ring-txt"><b>{{ ringing.title.replace('⏰ ', '') }}</b><small>{{ ringing.body }}</small></span>
+      <button @click="revealNote(ringing.noteId)">Show</button>
+      <button class="ghosty" @click="ringing = null">OK</button>
+    </div>
+    <div v-if="toast" class="toast" role="status">
+      {{ toast }}
+      <button v-if="store.undo" @click="store.undoLast(); toast = ''">Undo</button>
     </div>
   </div>
   <div v-else class="app">
@@ -605,6 +692,7 @@ onBeforeUnmount(() => {
       :initial="loadDesk()"
       @save="saveDesk"
       @open="openDeskWindow"
+      @wall="openWallWindow"
       @close="deskOpen = false"
     />
 
