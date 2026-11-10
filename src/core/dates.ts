@@ -125,6 +125,14 @@ export interface AgendaItem {
   state: DueState;
   /** found in the note's text: the line it came from */
   line?: number;
+  /** where your own note on this item is kept (Note.memos) */
+  memoKey: string;
+  memo: string;
+}
+
+/** A detected line's memo follows its words and time, not its line number (lines move). */
+export function memoKeyFor(title: string, due: string | null): string {
+  return due === null ? 'due' : `${title.toLowerCase().replace(/\s+/g, ' ').trim()}@${due.slice(11, 16)}`;
 }
 
 function stateOf(due: string, done: boolean, now: Date): DueState {
@@ -138,10 +146,22 @@ export function agendaItems(boards: readonly Board[], now: Date): AgendaItem[] {
     for (const note of board.notes) {
       if (note.due) {
         const done = !!note.done;
-        items.push({ key: note.id, note, board, due: note.due, title: noteTitle(note), done, state: stateOf(note.due, done, now) });
+        items.push({ key: note.id, note, board, due: note.due, title: noteTitle(note), done, state: stateOf(note.due, done, now), memoKey: 'due', memo: note.memos?.due ?? '' });
       }
       for (const d of detectTimes(note, now)) {
-        items.push({ key: `${note.id}#${d.line}`, note, board, due: d.due, title: d.title, done: d.done, state: stateOf(d.due, d.done, now), line: d.line });
+        const memoKey = memoKeyFor(d.title, d.due);
+        items.push({
+          key: `${note.id}#${d.line}`,
+          note,
+          board,
+          due: d.due,
+          title: d.title,
+          done: d.done,
+          state: stateOf(d.due, d.done, now),
+          line: d.line,
+          memoKey,
+          memo: note.memos?.[memoKey] ?? '',
+        });
       }
     }
   }
@@ -263,6 +283,31 @@ export function toIcs(note: Note, board: Board, now = new Date()): string {
     lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsEscape(noteTitle(note))}`, `TRIGGER:-PT${note.remind}M`, 'END:VALARM');
   }
   lines.push('END:VEVENT', 'END:VCALENDAR');
+  return `${lines.join('\r\n')}\r\n`;
+}
+
+/** Everything still to come, as one calendar file (Windows Calendar, Outlook, Google, Apple): one event each, alarm at the time. */
+export function agendaToIcs(items: readonly AgendaItem[], now = new Date()): string {
+  const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//corkboard//EN'];
+  for (const i of items) {
+    if (i.done || parseDue(i.due).getTime() < now.getTime()) continue;
+    const start = parseDue(i.due);
+    const end = new Date(start.getTime() + 30 * 60_000);
+    const remind = i.line === undefined ? i.note.remind : 0;
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:${i.key.replace(/#/g, '-')}-${i.due.replace(/[-:T]/g, '')}@corkboard`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART:${icsDate(start)}`,
+      `DTEND:${icsDate(end)}`,
+      `SUMMARY:${icsEscape(i.title)}`,
+      `DESCRIPTION:${icsEscape(`${i.memo ? `${i.memo}\n\n` : ''}From the board “${i.board.title}”`)}`,
+    );
+    if (remind !== undefined) lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsEscape(i.title)}`, `TRIGGER:-PT${remind}M`, 'END:VALARM');
+    lines.push('END:VEVENT');
+  }
+  lines.push('END:VCALENDAR');
   return `${lines.join('\r\n')}\r\n`;
 }
 

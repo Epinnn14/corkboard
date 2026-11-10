@@ -110,3 +110,18 @@ describe('notes → agenda', () => {
     expect(days[1].items[0].state).toBe('overdue');
   });
 });
+
+describe('agenda → calendar', () => {
+  it('one .ics with everything still to come, memos included, alarm at the time', async () => {
+    const { agendaToIcs } = await import('../src/core/dates');
+    const b = createBoard([], 'landscape', 'Weekly planner');
+    const tue = { ...createNote('index', b, { now: now.getTime() }), text: 'TUESDAY\nstandup 08.30\nlunch with Rani 12.30\ng̶y̶m̶ ̶1̶8̶.̶0̶0̶', memos: { 'lunch with rani@12:30': 'bring the slides' } };
+    b.notes = [tue];
+    const ics = agendaToIcs(agendaItems([b], now), now);
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(1); // 08:30 is past, gym is done
+    expect(ics).toContain('SUMMARY:lunch with Rani');
+    expect(ics).toContain('DTSTART:20261110T123000');
+    expect(ics).toContain('DESCRIPTION:bring the slides\\n\\nFrom the board “Weekly planner”');
+    expect(ics).toContain('TRIGGER:-PT0M');
+  });
+});

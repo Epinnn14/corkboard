@@ -246,8 +246,21 @@ export const useWorkspace = defineStore('workspace', {
 
     /** Tick a line of a note that the agenda found a time in: crosses it out (or back in). */
     toggleLine(id: string, line: number) {
+      // not an edit of the note: its "written on" day (updatedAt) stays, so undated lines keep their day
       const f = this.find(id);
-      if (f) this.updateNote(id, { text: toggleLineDone(f.note.text, line) });
+      if (f) f.note.text = toggleLineDone(f.note.text, line);
+    },
+
+    /** Your own short note on an agenda item; empty removes it. */
+    setMemo(id: string, key: string, text: string) {
+      const f = this.find(id);
+      if (!f) return;
+      const memos = { ...(f.note.memos ?? {}) };
+      const t = text.slice(0, 300);
+      if (t.trim()) memos[key.slice(0, 120)] = t;
+      else delete memos[key];
+      if (Object.keys(memos).length) f.note.memos = memos;
+      else delete f.note.memos;
     },
 
     /** Tick an agenda item: a dated note, or a line with a time in it. */

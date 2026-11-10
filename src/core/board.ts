@@ -47,6 +47,8 @@ export interface Note {
   done?: boolean;
   /** the due+remind key a notification was already shown for */
   notified?: string;
+  /** your own short notes on this note's agenda items ("bring the racket"), by item */
+  memos?: Record<string, string>;
   z: number;
   createdAt: number;
   updatedAt: number;
@@ -258,12 +260,22 @@ export function parseNotes(list: unknown, orientation: Orientation): { ok: true;
       ...(isNum(n.remind) && n.remind >= 0 && n.remind <= 60 * 24 * 7 ? { remind: Math.round(n.remind) } : {}),
       ...(n.done === true ? { done: true } : {}),
       ...(isStr(n.notified) ? { notified: n.notified.slice(0, 40) } : {}),
+      ...parseMemos(n.memos),
       z: n.z as number,
       createdAt: isNum(n.createdAt) ? n.createdAt : Date.now(),
       updatedAt: isNum(n.updatedAt) ? n.updatedAt : Date.now(),
     });
   }
   return { ok: true, notes };
+}
+
+function parseMemos(raw: unknown): { memos?: Record<string, string> } {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const memos: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>).slice(0, 100)) {
+    if (typeof v === 'string' && v.trim()) memos[k.slice(0, 120)] = v.slice(0, 300);
+  }
+  return Object.keys(memos).length ? { memos } : {};
 }
 
 export type ParseResult = { ok: true; board: Board } | { ok: false; error: string };
