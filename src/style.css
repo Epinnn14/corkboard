@@ -366,3 +366,7 @@ ol.desk-tip { padding-left: 18px; }
   .desk-grid, .desk-ways, .desk-board-wall { grid-template-columns: 1fr; }
   .desk-preview { height: 300px; }
 }
+.desk-ways:has(> .desk-way:only-child) { grid-template-columns: 1fr; }
+.desk-dl { display: inline-block; text-decoration: none; border-radius: 999px; padding: 10px 18px; font-size: 15px; margin: 4px 0 2px; }
+.desk-warn { color: #a3341f; font-size: 13px; }
+.desk-board-wall .desk-check select { flex: 1; }

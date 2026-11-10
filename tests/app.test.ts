@@ -260,33 +260,24 @@ describe('add to desktop', () => {
     wrapper.unmount();
   });
 
-  it('the wallpaper link carries a snapshot that a fresh browser (Lively) can show', async () => {
+  it('a widget wallpaper link (#widget…&wall=1&snap=…) still opens in a fresh browser', async () => {
     localStorage.clear();
-    const store = useWorkspace();
-    store.replace({ version: 2, boards: [], camera: null });
-    store.addBoard('landscape');
+    const src = useWorkspace();
+    src.replace({ version: 2, boards: [], camera: null });
+    src.addBoard('landscape');
     dated('Hand in thesis', 1);
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-    const wrapper = mount(App, { attachTo: document.body });
-    await wrapper.find('.bar .solid.plus').trigger('click');
-    await wrapper.find('[data-action=desk]').trigger('click');
-    await wrapper.find('[data-action=desk-wall]').trigger('click');
-    await vi.waitFor(() => expect(writeText).toHaveBeenCalled());
-    const link = writeText.mock.calls[0][0] as string;
-    expect(link).toMatch(/#widget\?show=clock%2Ctoday%2Cweek%2Cboard&theme=sticky&board=.+&wall=1&snap=z/);
-    wrapper.unmount();
+    const { deskHash, encodeSnapshot, makeSnapshot, DEFAULT_DESK } = await import('../src/core/desk');
+    const cfg = { ...DEFAULT_DESK, boardId: src.boards[0].id, wall: true };
+    const link = deskHash(cfg, await encodeSnapshot(makeSnapshot(src.boards, cfg)));
 
-    // somewhere else: empty storage, only the link
     setActivePinia(createPinia());
     const fresh = useWorkspace();
     fresh.replace({ version: 2, boards: [], camera: null });
-    window.location.hash = link.slice(link.indexOf('#'));
+    window.location.hash = link;
     const wall = mount(App, { attachTo: document.body });
     await vi.waitFor(() => expect(wall.find('.widget.wall').exists()).toBe(true));
     expect(wall.find('.widget').text()).toContain('Hand in thesis');
     expect(wall.find('.widget .snap').text()).toMatch(/^From corkboard, /);
-    expect(wall.find('.widget .open').exists()).toBe(false);
     window.location.hash = '';
     wall.unmount();
   });
@@ -354,48 +345,108 @@ describe('board wallpaper (#wall)', () => {
     wrapper.unmount();
   });
 
-  it('Add to desktop: a ready Lively link (optionally bringing the board along) or full screen', async () => {
+  it('Add to desktop (website): download the Windows app, or open the board full screen', async () => {
     localStorage.clear();
     const store = useWorkspace();
     store.replace({ version: 2, boards: [], camera: null });
     store.addBoard('landscape');
     const planner = store.addBoard('landscape', 'week');
-    store.updateNote(planner.notes[0].id, { text: 'MONDAY\n- gym' });
     const open = vi.spyOn(window, 'open').mockReturnValue({} as Window);
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     const wrapper = mount(App, { attachTo: document.body });
     await wrapper.find('.bar .solid.plus').trigger('click');
     await wrapper.find('[data-action=desk]').trigger('click');
+    expect(wrapper.find('[data-card=get-app]').exists()).toBe(true);
+    expect(wrapper.find('.desk').text()).not.toContain('Lively');
+    expect(wrapper.find('[data-action=get-windows-app]').attributes('href')).toBe(
+      'https://github.com/Epinnn14/corkboard/releases/latest/download/corkboard-Setup.exe',
+    );
     expect((wrapper.find('[data-field=wall-board]').element as HTMLSelectElement).value).toBe(planner.id);
-    // no export needed: the plain link is ready to paste into Lively
-    expect((wrapper.find('[data-field=wall-link]').element as HTMLInputElement).value).toMatch(/\/#wall$/);
-    await wrapper.find('[data-action=board-wall-copy]').trigger('click');
-    await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(writeText.mock.calls[0][0]).toMatch(/\/#wall$/);
-    // optionally start the wallpaper with a copy of this board
-    await wrapper.find('[data-field=wall-bring]').setValue(true);
-    await wrapper.find('[data-action=board-wall-copy]').trigger('click');
-    await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
-    const link = writeText.mock.calls[1][0] as string;
-    expect(link).toMatch(new RegExp(`#wall\\?board=${planner.id}&snap=z`));
     await wrapper.find('[data-action=board-wall-open]').trigger('click');
     expect(open.mock.calls[0][0]).toMatch(new RegExp(`#wall\\?board=${planner.id}$`));
     expect(open.mock.calls[0][1]).toBe('corkboard-wall');
     open.mockRestore();
     wrapper.unmount();
+  });
+});
 
-    // Lively: its own empty storage, only the link
-    setActivePinia(createPinia());
-    const fresh = useWorkspace();
-    fresh.replace({ version: 2, boards: [], camera: null });
-    window.location.hash = link.slice(link.indexOf('#'));
-    const wall = mount(App, { attachTo: document.body });
-    await vi.waitFor(() => expect(wall.find('.wallview .board').exists()).toBe(true));
-    expect(wall.find('.wallview .board').attributes('data-board-id')).toBe(planner.id);
-    expect(fresh.board(planner.id)!.notes[0].text).toBe('MONDAY\n- gym');
-    expect(wall.findAll('.wallview .note')).toHaveLength(planner.notes.length);
+describe('Windows app', () => {
+  function fakeBridge(wall: boolean) {
+    let editCb: (s: { editing: boolean; simple: boolean }) => void = () => {};
+    let settings = { wallpaper: true, mode: 'behind' as const, startup: false, embedded: true };
+    const bridge = {
+      wall,
+      version: '1.6.0',
+      onEditMode: (cb: typeof editCb) => (editCb = cb),
+      edit: vi.fn(),
+      done: vi.fn(),
+      openApp: vi.fn(),
+      setBoardRect: vi.fn(),
+      getSettings: vi.fn(async () => settings),
+      setSettings: vi.fn(async (p: object) => (settings = { ...settings, ...p })),
+    };
+    (window as unknown as { corkboardDesktop: unknown }).corkboardDesktop = bridge;
+    return { bridge, setEditing: (editing: boolean, simple = false) => editCb({ editing, simple }) };
+  }
+  const clearBridge = () => delete (window as unknown as { corkboardDesktop?: unknown }).corkboardDesktop;
+
+  it('the wallpaper window: quiet until double-clicked, then editable with Done', async () => {
+    localStorage.clear();
+    window.location.hash = '#wall';
+    const { bridge, setEditing } = fakeBridge(true);
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    const planner = store.addBoard('landscape', 'week');
+    const wrapper = mount(App, { attachTo: document.body });
+    expect(wrapper.find('.wallview .board').attributes('data-board-id')).toBe(planner.id);
+    expect(bridge.setBoardRect).toHaveBeenCalled();
+    expect(wrapper.find('[data-action=fab]').exists()).toBe(false);
+    expect(wrapper.find('[data-action=wall-done]').exists()).toBe(false);
+
+    setEditing(true);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-action=fab]').exists()).toBe(true);
+    await wrapper.find('[data-action=fab]').trigger('click');
+    await wrapper.find('[data-add=sticky]').trigger('click');
+    expect(store.board(planner.id)!.notes.some((n) => n.kind === 'sticky' && n.text === '')).toBe(true);
+    await wrapper.find('[data-action=fab]').trigger('click');
+    await wrapper.find('[data-action=wall-open]').trigger('click');
+    expect(bridge.openApp).toHaveBeenCalled();
+    expect(wrapper.find('.wallview').exists()).toBe(true); // the wallpaper stays the wallpaper
+    await wrapper.find('[data-action=wall-done]').trigger('click');
+    expect(bridge.done).toHaveBeenCalled();
+    setEditing(false);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-action=fab]').exists()).toBe(false);
+
+    // simple mode: always editable, no Done
+    setEditing(true, true);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-action=fab]').exists()).toBe(true);
+    expect(wrapper.find('[data-action=wall-done]').exists()).toBe(false);
+    clearBridge();
     window.location.hash = '';
-    wall.unmount();
+    wrapper.unmount();
+  });
+
+  it('the app window: wallpaper settings instead of the download', async () => {
+    const { bridge } = fakeBridge(false);
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    store.addBoard('landscape');
+    const wrapper = mount(App, { attachTo: document.body });
+    await wrapper.find('.bar .solid.plus').trigger('click');
+    await wrapper.find('[data-action=desk]').trigger('click');
+    await vi.waitFor(() => expect((wrapper.find('[data-field=wall-on]').element as HTMLInputElement).checked).toBe(true));
+    expect(wrapper.find('[data-card=get-app]').exists()).toBe(false);
+    await wrapper.find('[data-field=wall-startup]').setValue(true);
+    expect(bridge.setSettings).toHaveBeenCalledWith({ startup: true });
+    await wrapper.find('[data-field=wall-mode]').setValue('simple');
+    expect(bridge.setSettings).toHaveBeenCalledWith({ mode: 'simple' });
+    await wrapper.find('[data-action=wall-edit]').trigger('click');
+    expect(bridge.edit).toHaveBeenCalled();
+    expect(wrapper.find('.desk').exists()).toBe(false);
+    clearBridge();
+    wrapper.unmount();
   });
 });

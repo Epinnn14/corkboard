@@ -32,6 +32,7 @@ import {
   type WallBg,
   wallHash,
 } from './core/desk';
+import { desktop } from './core/desktop';
 import { showNotification } from './core/notify';
 import { composeWallpaper, type WallpaperKind } from './core/wallpaper';
 import { useNow } from './composables/now';
@@ -122,10 +123,18 @@ function onHash() {
 }
 
 let reminderTimer: ReturnType<typeof setInterval> | undefined;
-onMounted(() => {
+let alive = true;
+function startReminders() {
+  if (!alive) return;
   void checkReminders();
   reminderTimer = setInterval(() => void checkReminders(), 15_000);
   document.addEventListener('visibilitychange', checkReminders);
+}
+onMounted(() => {
+  // several corkboard windows (app, widget, wallpaper) may be open: only one of them rings
+  const locks = (navigator as Navigator & { locks?: LockManager }).locks;
+  if (locks?.request) void locks.request('corkboard-reminders', () => new Promise<void>(() => startReminders()));
+  else startReminders();
   window.addEventListener('hashchange', onHash);
   // a click on a notification (handled by the service worker) asks us to show that note
   navigator.serviceWorker?.addEventListener?.('message', (e: MessageEvent) => {
@@ -133,6 +142,7 @@ onMounted(() => {
   });
 });
 onBeforeUnmount(() => {
+  alive = false;
   clearInterval(reminderTimer);
   document.removeEventListener('visibilitychange', checkReminders);
   window.removeEventListener('hashchange', onHash);
@@ -237,10 +247,22 @@ const wall = ref<{ boardId: string | null; bg: WallBg }>({ boardId: null, bg: 'l
 const wallBoard = computed(() =>
   route.value === 'wall' ? (store.board(wall.value.boardId ?? '') ?? defaultWallBoard(store.boards, store.active)) : null,
 );
+const WALL_KEY = 'corkboard:wall';
+function savedWall(): { boardId: string | null; bg: WallBg } {
+  try {
+    const raw = JSON.parse(localStorage.getItem(WALL_KEY) ?? 'null');
+    return { boardId: typeof raw?.boardId === 'string' ? raw.boardId : null, bg: raw?.bg === 'dark' ? 'dark' : 'light' };
+  } catch {
+    return { boardId: null, bg: 'light' };
+  }
+}
 function readWall() {
   const w = parseWallHash(window.location.hash);
   if (!w) return;
-  wall.value = { boardId: w.boardId, bg: w.bg };
+  const saved = savedWall();
+  // the link wins; a bare #wall (the Windows app's wallpaper) shows the board picked last time
+  const bare = !w.boardId && w.bg === 'light' && !w.snap;
+  wall.value = bare ? saved : { boardId: w.boardId, bg: w.bg };
   if (w.snap) {
     // a wallpaper link opened in another browser (Lively): keep a copy of its board here once
     void decodeSnapshot(w.snap).then((snap) => {
@@ -260,6 +282,12 @@ watch(
 );
 function setWall(patch: Partial<{ boardId: string; bg: WallBg }>) {
   wall.value = { ...wall.value, ...patch };
+  try {
+    localStorage.setItem(WALL_KEY, JSON.stringify(wall.value));
+  } catch {
+    /* fine without it */
+  }
+  if (desktop()?.wall) return; // the app's wallpaper keeps its plain #wall address
   store.select(null);
   const snap = new URLSearchParams(window.location.hash.slice(6)).get('snap') ?? undefined;
   history.replaceState(null, '', wallHash(wall.value.boardId, wall.value.bg, snap));

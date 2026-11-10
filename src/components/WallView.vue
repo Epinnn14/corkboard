@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import type { Board, NoteKind } from '../core/board';
 import type { WallBg } from '../core/desk';
+import { desktop } from '../core/desktop';
 import { boardRect } from '../core/workspace';
 import { useWorkspace } from '../stores/workspace';
 import BoardView from './BoardView.vue';
@@ -26,7 +27,7 @@ onMounted(() => {
 });
 onBeforeUnmount(() => ro?.disconnect());
 
-// Filling the whole monitor (a Lively wallpaper, or F11): leave room for the taskbar.
+// Filling the whole monitor (the Windows app wallpaper, or F11): leave room for the taskbar.
 const screenH = () => window.screen?.height ?? 0;
 const covered = computed(() => screenH() > 0 && view.value.h >= screenH() - 2);
 const fit = computed(() => {
@@ -37,6 +38,41 @@ const fit = computed(() => {
   return { s, x: r.x, y: r.y, w: r.w * s, h: r.h * s };
 });
 provide('scale', computed(() => fit.value.s));
+
+// In the Windows app this window IS the wallpaper: it can't be clicked while it sits behind
+// the icons, so editing is a mode: double-click the board (or the tray icon) → edit → Done.
+const bridge = desktop();
+const onWall = !!bridge?.wall;
+const editing = ref(!onWall);
+const simple = ref(false);
+bridge?.onEditMode((st) => {
+  editing.value = st.editing;
+  simple.value = st.simple;
+  if (!st.editing) {
+    store.select(null);
+    close();
+  }
+});
+function done() {
+  store.select(null);
+  close();
+  bridge?.done();
+}
+// tell the app where the board is, so a double-click on it (and not elsewhere on the desktop) opens editing
+watch(
+  [fit, view, covered],
+  () => {
+    if (!onWall) return;
+    const bottom = covered.value ? 64 : 0;
+    bridge!.setBoardRect({
+      x: (view.value.w - fit.value.w) / 2,
+      y: (view.value.h - bottom - fit.value.h) / 2,
+      w: fit.value.w,
+      h: fit.value.h,
+    });
+  },
+  { immediate: true },
+);
 
 const open = ref(false);
 const boardsOpen = ref(false);
@@ -63,7 +99,12 @@ async function add(kind: NoteKind) {
   root.value?.querySelector<HTMLTextAreaElement>('.note.selected textarea')?.focus();
 }
 
-const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+const onKey = (e: KeyboardEvent) => {
+  if (e.key !== 'Escape') return;
+  // Esc: first closes the menu, then deselects (App does that), then leaves editing
+  if (open.value) close();
+  else if (onWall && editing.value && !simple.value && !store.selectedId) done();
+};
 onMounted(() => window.addEventListener('keydown', onKey));
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 
@@ -96,7 +137,11 @@ function onBackdrop(e: PointerEvent) {
       </div>
     </div>
 
-    <div class="fab-wrap" @pointerdown.stop>
+    <button v-if="onWall && editing && !simple" class="wv-done" data-action="wall-done" @click="done">
+      ✓ Done <small>back to wallpaper</small>
+    </button>
+
+    <div v-if="editing" class="fab-wrap" @pointerdown.stop>
       <div v-if="open" class="fab-menu" role="menu" aria-label="corkboard">
         <p class="fab-label">Add to “{{ board.title }}”</p>
         <div class="fab-add">
@@ -123,13 +168,13 @@ function onBackdrop(e: PointerEvent) {
         <button class="fab-item" role="menuitem" data-action="wall-bg" @click="emit('bg', bg === 'light' ? 'dark' : 'light')">
           <span aria-hidden="true">{{ bg === 'light' ? '🌙' : '☀️' }}</span> {{ bg === 'light' ? 'Dark' : 'Light' }} background
         </button>
-        <button class="fab-item" role="menuitem" @click="toggleFull">
+        <button v-if="!onWall" class="fab-item" role="menuitem" @click="toggleFull">
           <span aria-hidden="true">⛶</span> {{ full ? 'Exit full screen' : 'Full screen' }}
         </button>
         <button class="fab-item" role="menuitem" data-action="wall-desk" @click="close(); emit('desk')">
           <span aria-hidden="true">🖥️</span> Add to desktop…
         </button>
-        <button class="fab-item" role="menuitem" data-action="wall-open" @click="emit('open')">
+        <button class="fab-item" role="menuitem" data-action="wall-open" @click="bridge ? (close(), bridge.openApp()) : emit('open')">
           <span aria-hidden="true">↗</span> Open full corkboard
         </button>
       </div>
@@ -152,6 +197,24 @@ function onBackdrop(e: PointerEvent) {
 }
 .wallview.covered { padding-bottom: 64px; }
 .covered .fab-wrap { bottom: 72px; }
+.wv-done {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 22px;
+  background: #2b2620;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.wv-done small { font-weight: 500; opacity: 0.7; margin-left: 4px; }
 .bg-dark { background: radial-gradient(120% 90% at 50% 40%, #2c2925, #161412); }
 .wv-stage { position: relative; }
 .wv-scaled { position: absolute; left: 0; top: 0; transform-origin: 0 0; }

@@ -6,14 +6,10 @@ import {
   DESK_THEMES,
   type DeskConfig,
   type DeskPart,
-  boardSnapshot,
   defaultWallBoard,
-  deskHash,
   deskWindowSize,
-  encodeSnapshot,
-  makeSnapshot,
-  wallHash,
 } from '../core/desk';
+import { desktop, type DesktopSettings, WINDOWS_DOWNLOAD } from '../core/desktop';
 import WidgetView from './WidgetView.vue';
 
 const props = defineProps<{ boards: readonly Board[]; initial: DeskConfig }>();
@@ -28,43 +24,19 @@ function toggle(p: DeskPart) {
   cfg.value.parts = on ? cfg.value.parts.filter((x) => x !== p) : DESK_PARTS.map((d) => d.id).filter((id) => id === p || cfg.value.parts.includes(id));
 }
 
-const base = () => window.location.href.replace(/#.*$/, '');
-const wallLink = ref('');
-const copied = ref(false);
-async function copyWall() {
-  const c = { ...cfg.value, wall: true };
-  const snap = await encodeSnapshot(makeSnapshot(props.boards, c));
-  wallLink.value = base() + deskHash(c, snap);
-  try {
-    await navigator.clipboard.writeText(wallLink.value);
-    copied.value = true;
-    setTimeout(() => (copied.value = false), 4000);
-  } catch {
-    copied.value = false; // the link stays visible below to copy by hand
-  }
-}
-watch(cfg, () => (wallLink.value = ''), { deep: true });
-
-// the board itself as the wallpaper, editable
+// the board itself as the wallpaper
 const wallBoardId = ref<string | null>(defaultWallBoard(props.boards, null)?.id ?? null);
-const bringAlong = ref(false);
-const boardLink = ref(base() + wallHash(null));
-const boardCopied = ref(false);
-async function boardWallLink(): Promise<string> {
-  const b = props.boards.find((x) => x.id === wallBoardId.value);
-  if (!bringAlong.value || !b) return base() + wallHash(null);
-  return base() + wallHash(b.id, 'light', await encodeSnapshot(boardSnapshot(b)));
+
+// inside the Windows app: real wallpaper controls
+const bridge = desktop();
+const settings = ref<DesktopSettings | null>(null);
+if (bridge) void bridge.getSettings().then((x) => (settings.value = x));
+async function setSetting(patch: Partial<DesktopSettings>) {
+  if (bridge) settings.value = await bridge.setSettings(patch);
 }
-watch([bringAlong, wallBoardId], async () => (boardLink.value = await boardWallLink()));
-async function copyBoardWall() {
-  boardLink.value = await boardWallLink();
-  try {
-    await navigator.clipboard.writeText(boardLink.value);
-    boardCopied.value = true;
-    setTimeout(() => (boardCopied.value = false), 4000);
-  } catch {
-    boardCopied.value = false;
-  }
+function editWall() {
+  bridge?.edit();
+  emit('close');
 }
 
 const previewCfg = computed(() => ({ ...cfg.value, wall: false }));
@@ -91,41 +63,64 @@ const pscale = computed(() => Math.min(1, (pw.value.w - 16) / win.value.w, (pw.v
         <button class="ghost" @click="emit('close')">Close</button>
       </header>
 
-      <article class="desk-way desk-board-wall">
+      <article v-if="bridge" class="desk-way desk-board-wall" data-card="desktop-wall">
         <div>
-          <h3>🖼️ Your board as the real wallpaper</h3>
+          <h3>🖼️ Your board as the wallpaper</h3>
           <p>
-            The board sits behind your desktop icons, on a plain background, and you edit it right there: click a note
-            to write, drag it, double-click the cork to add one. Everything else hides in one round 📌 button.
+            The board sits on your desktop as the wallpaper. <b>Double-click it</b> (or the corkboard icon by the clock)
+            to edit: write, drag, add notes. Press <b>Done</b> and it goes back behind your icons.
           </p>
-          <p class="desk-step"><b>1.</b> Get <b>Lively Wallpaper</b> (free, Microsoft Store), press <b>+</b>, paste this link:</p>
-          <div class="desk-linkrow">
-            <input class="desk-link" readonly :value="boardLink" data-field="wall-link" @focus="($event.target as HTMLInputElement).select()" />
-            <button class="solid" data-action="board-wall-copy" @click="copyBoardWall">{{ boardCopied ? 'Copied ✓' : 'Copy' }}</button>
-          </div>
           <label class="desk-check">
-            <input v-model="bringAlong" type="checkbox" data-field="wall-bring" />
-            Start it with a copy of
-            <select v-model="wallBoardId" data-field="wall-board" :disabled="!bringAlong">
-              <option v-for="b in boards" :key="b.id" :value="b.id">{{ b.title }}</option>
-            </select>
+            <input type="checkbox" :checked="settings?.wallpaper" data-field="wall-on" @change="setSetting({ wallpaper: ($event.target as HTMLInputElement).checked })" />
+            Show the board as my wallpaper
           </label>
-          <p class="desk-step">
-            <b>2.</b> In Lively: <i>Settings → Wallpaper → Interaction → Wallpaper input</i>: <b>Mouse</b>, and
-            <b>Keyboard</b> to type on it.
-          </p>
-          <p class="desk-step"><b>3.</b> Optional: right-click the desktop → <i>View</i> → untick <i>Show desktop icons</i> for a clean board.</p>
+          <label class="desk-check">
+            <input type="checkbox" :checked="settings?.startup" data-field="wall-startup" @change="setSetting({ startup: ($event.target as HTMLInputElement).checked })" />
+            Start corkboard with Windows
+          </label>
+          <button class="solid" data-action="wall-edit" :disabled="!settings?.wallpaper" @click="editWall">Edit the wallpaper now</button>
         </div>
         <div class="desk-tip">
           <p>
-            <b>Good to know:</b> Lively shows web pages with its own built-in browser, so the wallpaper keeps
-            <b>its own</b> boards, saved inside Lively. Notes you write on the wallpaper stay on the wallpaper; this app
-            window keeps its own. Without the copy, the wallpaper starts with a fresh Weekly planner.
+            The wallpaper shows the board you pick with its 📌 button (your Weekly planner to start with). It's the same
+            corkboard as this window: change a note in one, the other follows. Reminders keep ringing all day.
           </p>
+          <label class="desk-check">
+            Style
+            <select :value="settings?.mode" data-field="wall-mode" @change="setSetting({ mode: ($event.target as HTMLSelectElement).value as DesktopSettings['mode'] })">
+              <option value="behind">Behind the desktop icons</option>
+              <option value="simple">Simple: a window at the back, always editable</option>
+            </select>
+          </label>
+          <p v-if="settings?.wallpaper && settings?.embedded === false" class="desk-warn">
+            Windows didn't let corkboard go behind the icons on this PC, so it uses <b>Simple</b>.
+          </p>
+        </div>
+      </article>
+      <article v-else class="desk-way desk-board-wall" data-card="get-app">
+        <div>
+          <h3>🖼️ Your board as the real wallpaper</h3>
           <p>
-            <b>Same boards as here instead?</b> Open the board full screen in its own window (saved together, reminders on),
-            then press <b>F11</b>.
+            Get the free <b>corkboard app for Windows</b>: your Weekly planner becomes the desktop wallpaper, behind your
+            icons. Double-click it to write, drag and add notes, press Done and it's wallpaper again. Reminders ring all
+            day, and it can start with Windows.
           </p>
+          <a class="solid desk-dl" :href="WINDOWS_DOWNLOAD" data-action="get-windows-app">⬇️ Download for Windows</a>
+          <p class="desk-step">
+            Open the file and corkboard installs itself and appears on your desktop. Windows may say it's from an unknown
+            publisher: <i>More info → Run anyway</i>.
+          </p>
+        </div>
+        <div class="desk-tip">
+          <p>
+            The app keeps its own boards. To bring these along: <b>+ → Backup</b> here, then <b>+ → Import files</b> in the app.
+          </p>
+          <p><b>No install?</b> Show just the board in its own full-screen window (press <b>F11</b>):</p>
+          <label class="desk-check">
+            <select v-model="wallBoardId" data-field="wall-board">
+              <option v-for="b in boards" :key="b.id" :value="b.id">{{ b.title }}</option>
+            </select>
+          </label>
           <button class="ghost" data-action="board-wall-open" @click="emit('wall', wallBoardId)">Open full screen</button>
         </div>
       </article>
@@ -188,18 +183,6 @@ const pscale = computed(() => Math.min(1, (pw.value.w - 16) / win.value.w, (pw.v
             <i>Auto-start on device login</i>. Chrome → <code>chrome://apps</code> → right-click corkboard →
             <i>Start app when you sign in</i>.
           </p>
-        </article>
-        <article class="desk-way">
-          <h3>🌄 Live wallpaper <small>with Lively Wallpaper</small></h3>
-          <p>Behind your desktop icons, with a live clock. It shows your reminders as they are now; copy the link again after you change them.</p>
-          <button class="solid" data-action="desk-wall" @click="copyWall">{{ copied ? 'Link copied ✓' : 'Copy wallpaper link' }}</button>
-          <a v-if="wallLink" class="desk-try" :href="wallLink" target="_blank" rel="noopener">Preview it</a>
-          <input v-if="wallLink && !copied" class="desk-link" readonly :value="wallLink" @focus="($event.target as HTMLInputElement).select()" />
-          <ol class="desk-tip">
-            <li>Open <b>Lively Wallpaper</b> (free in the Microsoft Store) and press <b>+</b></li>
-            <li>Paste the link into the URL box and press the arrow</li>
-            <li>Choose it as your wallpaper</li>
-          </ol>
         </article>
       </div>
     </section>
