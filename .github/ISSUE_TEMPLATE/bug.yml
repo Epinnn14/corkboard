@@ -1,0 +1,37 @@
+name: 🐞 Report a problem
+description: Something doesn't work or looks wrong
+title: "Problem: "
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      placeholder: "e.g. the widget's › button doesn't go to tomorrow"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we see it too?
+      placeholder: |
+        1. Open the widget
+        2. Press ›
+        3. …
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where do you use corkboard?
+      options:
+        - Windows app (corkboard.exe)
+        - Website in a browser
+        - Installed from the website (laptop)
+        - Phone (Android)
+        - Phone (iPhone / iPad)
+    validations:
+      required: true
+  - type: textarea
+    id: picture
+    attributes:
+      label: A screenshot (optional)
+      description: Drag an image in here. Please hide anything private on your boards.

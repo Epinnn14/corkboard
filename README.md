@@ -1,6 +1,6 @@
 # corkboard
 
-**An endless wall of cork boards in your browser.** Pin sticky notes, index cards, lined paper,
+**An endless wall of cork boards on your laptop and phone.** Pin sticky notes, index cards, lined paper,
 polaroids, stickers and washi tape, plan your week, run a kanban, build a moodboard.
 No account, no server: everything stays on your device.
 
@@ -8,6 +8,13 @@ No account, no server: everything stays on your device.
 
 Made for the way people actually plan: students with exams and group projects,
 office folks juggling tasks and meetings, and anyone who thinks better with paper on a wall.
+
+> [!TIP]
+> **Saran & kritik welcome.** Got an idea, a change you'd like, or something that doesn't work? Tell me, it takes a minute:
+> **[💬 Share feedback](https://github.com/Epinnn14/corkboard/issues/new?template=feedback.yml)** ·
+> **[💡 Suggest a change](https://github.com/Epinnn14/corkboard/issues/new?template=change.yml)** ·
+> **[🐞 Report a problem](https://github.com/Epinnn14/corkboard/issues/new?template=bug.yml)** ·
+> [see what others said](https://github.com/Epinnn14/corkboard/issues)
 
 ## Install
 
@@ -224,6 +231,19 @@ desktop/                  the Windows app (Electron)
 
 Everything on screen is drawn with CSS, SVG and canvas: no image assets.
 See [ROADMAP.md](ROADMAP.md).
+
+## Feedback (saran & kritik)
+
+What you like, what bugs you, what you'd change, what's broken: every bit helps.
+
+| | |
+|---|---|
+| **[💬 Share feedback](https://github.com/Epinnn14/corkboard/issues/new?template=feedback.yml)** | how it feels to use, good and bad (saran & kritik) |
+| **[💡 Suggest a change](https://github.com/Epinnn14/corkboard/issues/new?template=change.yml)** | something new, or something done differently |
+| **[🐞 Report a problem](https://github.com/Epinnn14/corkboard/issues/new?template=bug.yml)** | something doesn't work or looks wrong |
+
+Each one is a short form, no coding needed (a free GitHub account is all it takes); English or Bahasa Indonesia. New versions and what changed are on the
+[Releases](https://github.com/Epinnn14/corkboard/releases) page.
 
 ## License
 

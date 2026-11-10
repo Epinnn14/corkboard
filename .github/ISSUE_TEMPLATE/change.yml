@@ -1,0 +1,38 @@
+name: 💡 Suggest a change
+description: Something you'd like corkboard to do, or do differently
+title: "Idea: "
+labels: [idea]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping make corkboard better! A sentence or two is plenty.
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like?
+      placeholder: "e.g. let me pick a colour for the widget's sticky"
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why would it help you?
+      placeholder: "e.g. I keep my work plans yellow and my uni plans blue"
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where?
+      multiple: true
+      options:
+        - Boards and notes
+        - Agenda
+        - Desktop widget
+        - Windows app
+        - Phone
+        - Import / export
+        - Something else
+  - type: textarea
+    id: picture
+    attributes:
+      label: A screenshot or sketch (optional)
+      description: Drag an image in here.
