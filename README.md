@@ -121,6 +121,27 @@ note from one board straight onto another. Boards are landscape on wide screens 
   it's on**. Close the widget yourself (⋯ → *Close widget*) and it stops starting up, until you show it again.
 - On a phone or in the browser: **+** → *Desktop widget* → *Open widget*, or *Widget mode*.
 
+## Desktop board
+
+<p align="center"><img src="docs/desktop-board.jpg" width="800" alt="The desktop board: clock, to-do list, calendar with the agenda, focus timer, progress, journal and sticky notes on a pegboard"></p>
+
+A pegboard that fills the screen **behind every other window**, like a wallpaper you can use. The taskbar stays
+where it is, and your windows stay on top of it.
+
+- **To-do today**: add, tick and remove; ticked items stay crossed out until tomorrow, with a done count.
+- **Sticky notes**: *+ Sticky note* or double-click the pegboard, write on them, change the colour, drag them anywhere.
+- **Calendar**: the month with a dot on every day that has something on the agenda; pick a day to see it, tick it off.
+- **Focus timer**: Focus, Break and Long break (25 / 5 / 15 minutes, change them with − +), a long break after every
+  fourth focus session, a bell and a notification at the end.
+- **Today so far**: focus sessions, minutes and to-dos done, and the minutes of the last 7 days.
+- **Journal**: a mood and a few lines for the day; *Earlier* lists the days you wrote on.
+- Drag every card by its top strip (or the arrow keys on its peg), hide what you don't use under *On the board*.
+
+Turn it on with **+** → *Desktop board*, or from the corkboard icon by the clock (*Desktop board (behind your
+windows)*). It starts with the computer while it's on. On Windows a click on the board never brings it over your
+other windows, and *Show desktop* (Win+D) shows it. In a browser, **+** → *Desktop board* opens it as a page
+(`#desktop`), on a phone as one column.
+
 ## Import & export
 
 **Import** from the **+** menu (several files at once):
@@ -177,6 +198,7 @@ src/
 │   ├── dates.ts          due dates, agenda days, reminders, .ics
 │   ├── detect.ts         times and days written in notes → agenda items
 │   ├── desk.ts           widget settings, sizes, the day's list
+│   ├── deskboard.ts      the desktop board: to-dos, notes, focus timer, progress, journal, calendar
 │   ├── desktop.ts        the bridge to the desktop app
 │   ├── sync.ts           autosave, keeping several windows in step
 │   ├── install.ts        install steps per device and browser
@@ -185,9 +207,10 @@ src/
 │   └── storage.ts        IndexedDB
 ├── stores/workspace.ts   Pinia: boards, notes, drops between boards, undo
 └── components/           Workspace, BoardView, NoteItem, DueEditor, AgendaPanel,
-                          WidgetView, DeskSheet, InstallSheet, PushPin
+                          WidgetView, DesktopBoard, DeskSheet, InstallSheet, PushPin
 desktop/
-├── main.cjs              tray / menu bar, the widget window, the app window, start with the computer
+├── main.cjs              tray / menu bar, the widget, the desktop board behind your windows (user32 via koffi
+│                         on Windows), the app window, start with the computer
 └── preload.cjs           window.corkboardDesktop for the web app
 ```
 

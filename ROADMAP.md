@@ -17,6 +17,7 @@
 - [ ] Keyboard moving of notes (arrow keys) and richer screen-reader labels.
 
 ## Done
+- [x] **2.1**: the desktop board: a pegboard behind your windows with to-dos, sticky notes, a calendar with the agenda, a focus timer, the day's progress and a journal
 - [x] **2.0**: the widget moves by its top middle; everything checked end to end; first stable release of the Windows app
 - [x] v1.10: first open shows every board, with a Start here / How to use board and a filled-in Weekly planner; agenda shows every item of a day; wallpaper pictures removed
 - [x] v1.9: agenda as a box per day with boxed times and your own note under each item, Add to my calendar (.ics); widget shows today's notes with ‹ › for other days; README: direct Windows download, runs offline

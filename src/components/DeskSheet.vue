@@ -163,6 +163,10 @@ const pscale = computed(() => Math.min(1, (pw.value.w - 20) / win.value.w, (pw.v
             <input type="checkbox" :checked="settings?.onTop" data-field="widget-top" @change="setSetting({ onTop: ($event.target as HTMLInputElement).checked })" />
             Keep it above other windows
           </label>
+          <label v-if="settings && 'board' in settings" class="desk-check">
+            <input type="checkbox" :checked="settings.board" data-field="board-on" @change="setSetting({ board: ($event.target as HTMLInputElement).checked })" />
+            Desktop board <small class="desk-hint">(a pegboard with to-dos, notes, calendar, focus timer and journal behind your windows)</small>
+          </label>
           <label class="desk-check">
             <input type="checkbox" :checked="settings?.startup" data-field="widget-startup" @change="setSetting({ startup: ($event.target as HTMLInputElement).checked })" />
             Start with {{ os }} <small class="desk-hint">(on while the widget is on; closing the widget turns it off)</small>

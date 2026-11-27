@@ -9,11 +9,15 @@ export interface DesktopSettings {
   onTop: boolean;
   /** start corkboard when the computer starts (Windows startup apps, Mac login items) */
   startup: boolean;
+  /** the desktop board: a pegboard filling the screen behind every other window (older builds leave it out) */
+  board?: boolean;
 }
 
 export interface DesktopBridge {
   /** this window is the desktop widget */
   widget: boolean;
+  /** this window is the desktop board, behind every other window */
+  board?: boolean;
   /** 'win32' or 'darwin' (older builds leave it out: Windows) */
   platform?: string;
   /** open (or focus) the full corkboard window: 'desk' opens the widget settings there, 'note:<id>' shows that note */
@@ -22,6 +26,8 @@ export interface DesktopBridge {
   resizeWidget(w: number, h: number): void;
   /** turn the widget on and bring it to the top-right corner of the screen */
   showWidget(): void;
+  /** turn the desktop board on and minimise the app so it shows (older builds leave it out) */
+  showBoard?(): void;
   getSettings(): Promise<DesktopSettings>;
   setSettings(patch: Partial<DesktopSettings>): Promise<DesktopSettings>;
   onSettings(cb: (s: DesktopSettings) => void): void;

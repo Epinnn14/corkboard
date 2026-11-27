@@ -7,6 +7,9 @@
  *    the time, today's reminders (tick them off on it), what's coming up and,
  *    if you like, a mini board. Drag it by its top strip; it remembers where.
  *  - the app: the full corkboard, from the Start menu, desktop, tray or widget.
+ *  - the desktop board (#desktop): a pegboard with to-dos, sticky notes, a
+ *    calendar, a focus timer and a journal that fills the screen *behind*
+ *    every other window, like a live wallpaper. The taskbar stays visible.
  *
  * Both show the same corkboard (one storage, kept in step by the web app).
  * It lives in the tray (the menu bar on a Mac) and starts with the computer,
@@ -30,7 +33,7 @@ protocol.registerSchemesAsPrivileged([
 
 // ------------------------------------------------------------- settings
 const SETTINGS_FILE = () => path.join(app.getPath('userData'), 'settings.json');
-const DEFAULTS = { widget: true, onTop: false, startup: true, firstRun: true, toldTray: false, bounds: null };
+const DEFAULTS = { widget: true, onTop: false, startup: true, board: false, firstRun: true, toldTray: false, bounds: null };
 let settings = { ...DEFAULTS };
 function loadSettings() {
   try {
@@ -61,7 +64,7 @@ function applyStartup() {
   if (!app.isPackaged) return; // don't register the dev build
   app.setLoginItemSettings({ openAtLogin: settings.startup, args: ['--hidden'] });
 }
-const publicSettings = () => ({ widget: settings.widget, onTop: settings.onTop, startup: settings.startup });
+const publicSettings = () => ({ widget: settings.widget, onTop: settings.onTop, startup: settings.startup, board: settings.board });
 function broadcastSettings() {
   for (const w of BrowserWindow.getAllWindows()) w.webContents.send('cb:settings', publicSettings());
 }
@@ -99,7 +102,7 @@ function openApp(view) {
   appWin.once('ready-to-show', () => appWin.show());
   appWin.on('closed', () => {
     appWin = null;
-    if (settings.widget && !quitting && !settings.toldTray && Notification.isSupported()) {
+    if ((settings.widget || settings.board) && !quitting && !settings.toldTray && Notification.isSupported()) {
       settings.toldTray = true;
       saveSettings();
       new Notification({
@@ -217,6 +220,116 @@ function destroyWidget() {
   if (w && !w.isDestroyed()) w.destroy();
 }
 
+// ------------------------------------------------------------- the desktop board
+/*
+ * A frameless window over the work area (the screen minus the taskbar) that
+ * stays under every other window. On Windows it is owned by the desktop
+ * (Progman), the way desktop gadgets do it: "Show desktop" (Win+D) leaves it
+ * standing, and a click on it never brings it over your other windows.
+ */
+let board = null;
+
+/** user32 through koffi (no compiler needed); null where it isn't there. */
+let win32;
+function user32() {
+  if (win32 !== undefined) return win32;
+  win32 = null;
+  if (process.platform !== 'win32') return win32;
+  try {
+    const koffi = require('koffi');
+    const lib = koffi.load('user32.dll');
+    win32 = {
+      FindWindowW: lib.func('intptr __stdcall FindWindowW(str16 cls, str16 name)'),
+      SetWindowLongPtrW: lib.func('intptr __stdcall SetWindowLongPtrW(intptr hwnd, int index, intptr value)'),
+      SetWindowPos: lib.func('bool __stdcall SetWindowPos(intptr hwnd, intptr after, int x, int y, int cx, int cy, uint flags)'),
+    };
+  } catch (e) {
+    console.error('corkboard: no user32, the board is a normal window', e);
+  }
+  return win32;
+}
+const hwndOf = (win) => {
+  const b = win.getNativeWindowHandle();
+  return b.length >= 8 ? Number(b.readBigUInt64LE(0)) : b.readUInt32LE(0);
+};
+const GWLP_HWNDPARENT = -8;
+const HWND_BOTTOM = 1;
+const SWP_UNDER = 0x0001 | 0x0002 | 0x0010; // keep size, keep place, don't activate
+
+function pinToDesktop(win) {
+  const u = user32();
+  if (!u) return;
+  try {
+    const progman = u.FindWindowW('Progman', null);
+    if (progman) u.SetWindowLongPtrW(hwndOf(win), GWLP_HWNDPARENT, progman);
+  } catch (e) {
+    console.error('corkboard: could not pin the board to the desktop', e);
+  }
+  sendToBack(win);
+}
+function sendToBack(win) {
+  const u = user32();
+  if (!u || !win || win.isDestroyed()) return;
+  try {
+    u.SetWindowPos(hwndOf(win), HWND_BOTTOM, 0, 0, 0, 0, SWP_UNDER);
+  } catch (e) {
+    console.error('corkboard: could not send the board back', e);
+  }
+}
+
+function boardBounds() {
+  const a = screen.getPrimaryDisplay().workArea;
+  return { x: a.x, y: a.y, width: a.width, height: a.height };
+}
+
+function createBoard() {
+  if (board && !board.isDestroyed()) {
+    board.showInactive();
+    sendToBack(board);
+    return;
+  }
+  board = new BrowserWindow({
+    ...boardBounds(),
+    frame: false,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    hasShadow: false,
+    show: false,
+    title: 'corkboard desktop board',
+    icon: ICON,
+    backgroundColor: '#d9a441',
+    // Linux window managers keep a "desktop" window at the bottom and still let you type in it
+    ...(process.platform === 'linux' ? { type: 'desktop' } : {}),
+    webPreferences: { preload: PRELOAD, additionalArguments: ['--cb-board'], backgroundThrottling: false },
+  });
+  wireWindow(board);
+  board.loadURL(`${ORIGIN}index.html#desktop`);
+  board.once('ready-to-show', () => {
+    board.showInactive();
+    pinToDesktop(board);
+  });
+  // clicking or typing on it: it takes the keys but stays under your windows
+  board.on('focus', () => sendToBack(board));
+  // "minimise all" and the like: the board is the desktop, so it comes straight back
+  board.on('minimize', () => setTimeout(() => board && !board.isDestroyed() && (board.showInactive(), sendToBack(board)), 200));
+  board.on('closed', () => {
+    board = null;
+    if (!quitting && settings.board) setSettings({ board: false });
+  });
+}
+function fitBoard() {
+  if (board && !board.isDestroyed()) board.setBounds(boardBounds());
+}
+function destroyBoard() {
+  const b = board;
+  board = null;
+  if (b && !b.isDestroyed()) b.destroy();
+}
+
 // ------------------------------------------------------------- tray
 let tray = null;
 function rebuildTray() {
@@ -229,7 +342,9 @@ function rebuildTray() {
       { label: 'Show the widget (top right)', click: () => showWidget() },
       { label: 'Widget on the desktop', type: 'checkbox', checked: settings.widget, click: (i) => setSettings({ widget: i.checked }) },
       { label: 'Keep the widget on top', type: 'checkbox', checked: settings.onTop, click: (i) => setSettings({ onTop: i.checked }) },
-      { label: `Start with ${OS} (while the widget is on)`, type: 'checkbox', checked: settings.startup, click: (i) => setSettings({ startup: i.checked }) },
+      { type: 'separator' },
+      { label: 'Desktop board (behind your windows)', type: 'checkbox', checked: settings.board, click: (i) => setSettings({ board: i.checked }) },
+      { label: `Start with ${OS} (while the widget or board is on)`, type: 'checkbox', checked: settings.startup, click: (i) => setSettings({ startup: i.checked }) },
       { type: 'separator' },
       { label: 'Quit corkboard', click: () => app.quit() },
     ]),
@@ -252,13 +367,18 @@ function setSettings(patch) {
   if (typeof patch.widget === 'boolean') {
     settings.widget = patch.widget;
     // the widget on means corkboard starts with Windows, until you close the widget yourself
-    if (typeof patch.startup !== 'boolean') settings.startup = patch.widget;
+    if (typeof patch.startup !== 'boolean') settings.startup = patch.widget || settings.board;
+  }
+  if (typeof patch.board === 'boolean') {
+    settings.board = patch.board;
+    if (typeof patch.startup !== 'boolean') settings.startup = settings.board || settings.widget;
   }
   if (typeof patch.onTop === 'boolean') settings.onTop = patch.onTop;
   if (typeof patch.startup === 'boolean') settings.startup = patch.startup;
   saveSettings();
   if (settings.startup !== before.startup) applyStartup();
   if (settings.widget !== before.widget) settings.widget ? createWidget(true) : destroyWidget();
+  if (settings.board !== before.board) settings.board ? createBoard() : destroyBoard();
   if (settings.onTop !== before.onTop && widget) widget.setAlwaysOnTop(settings.onTop);
   rebuildTray();
   broadcastSettings();
@@ -269,6 +389,13 @@ ipcMain.handle('cb:get-settings', () => publicSettings());
 ipcMain.handle('cb:set-settings', (_e, patch) => setSettings(patch ?? {}));
 ipcMain.on('cb:open-app', (_e, view) => openApp(view));
 ipcMain.on('cb:show-widget', () => showWidget());
+/** "Desktop board" in the app: switch it on and step aside so you see it */
+ipcMain.on('cb:show-board', (e) => {
+  if (!settings.board) setSettings({ board: true });
+  else createBoard();
+  const from = BrowserWindow.fromWebContents(e.sender);
+  if (from && from === appWin) appWin.minimize();
+});
 
 /** "Show the widget": switch it on if it was off, and bring it to the top-right corner. */
 function showWidget() {
@@ -318,6 +445,8 @@ if (!app.requestSingleInstanceLock()) {
     }
     createTray();
     if (settings.widget) createWidget();
+    if (settings.board) createBoard();
+    for (const ev of ['display-metrics-changed', 'display-added', 'display-removed']) screen.on(ev, fitBoard);
     if (!startedAtLogin()) openApp();
   });
 
@@ -329,10 +458,10 @@ if (!app.requestSingleInstanceLock()) {
     openApp();
   });
 
-  // closing the app window keeps the widget (and its reminders) on the desktop, from the tray;
-  // with the widget off as well, there's nothing left to show: corkboard closes
+  // closing the app window keeps the widget / board (and the reminders) on the desktop, from the tray;
+  // with both off as well, there's nothing left to show: corkboard closes
   app.on('window-all-closed', () => {
-    if (!settings.widget) app.quit();
+    if (!settings.widget && !settings.board) app.quit();
   });
   app.on('before-quit', () => (quitting = true));
 }

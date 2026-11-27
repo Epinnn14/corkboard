@@ -1,8 +1,8 @@
 {
   "name": "corkboard-desktop",
   "productName": "corkboard",
-  "version": "2.0.0",
-  "description": "corkboard for Windows and Mac: a desktop widget with your date, reminders and boards",
+  "version": "2.1.0",
+  "description": "corkboard for Windows and Mac: a desktop widget and a desktop board with your date, reminders, to-dos and boards",
   "main": "main.cjs",
   "author": "Epinnn14",
   "license": "MIT",
@@ -31,7 +31,8 @@
       "web/**",
       "build/tray*.png",
       "build/icon.png",
-      "package.json"
+      "package.json",
+      "!node_modules/koffi/{src,vendor,doc}/**"
     ],
     "win": {
       "target": [
@@ -42,7 +43,10 @@
           ]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "files": [
+        "!node_modules/koffi/build/koffi/!(win32_x64)/**"
+      ]
     },
     "nsis": {
       "oneClick": true,
@@ -68,11 +72,22 @@
       "identity": "-",
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
-      "artifactName": "corkboard-mac.${ext}"
+      "artifactName": "corkboard-mac.${ext}",
+      "files": [
+        "!node_modules/koffi/build/koffi/!(darwin_x64|darwin_arm64)/**"
+      ]
     },
     "dmg": {
       "title": "corkboard",
       "artifactName": "corkboard-mac.${ext}"
+    },
+    "linux": {
+      "files": [
+        "!node_modules/koffi/build/koffi/!(linux_x64)/**"
+      ]
     }
+  },
+  "dependencies": {
+    "koffi": "2.16.4"
   }
 }

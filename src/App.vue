@@ -33,6 +33,7 @@ import { useNow } from './composables/now';
 import { useWorkspace } from './stores/workspace';
 import AgendaPanel from './components/AgendaPanel.vue';
 import DeskSheet from './components/DeskSheet.vue';
+import DesktopBoard from './components/DesktopBoard.vue';
 import InstallSheet from './components/InstallSheet.vue';
 import WidgetView from './components/WidgetView.vue';
 import Workspace from './components/Workspace.vue';
@@ -50,7 +51,8 @@ const agendaOpen = ref(window.location.hash === '#agenda');
 const installOpen = ref(window.location.hash === '#install' || !!platformFromHash(window.location.hash));
 const installTab = ref<Platform | null>(platformFromHash(window.location.hash));
 const isWidget = () => window.location.hash.startsWith('#widget');
-const routeOf = (): 'app' | 'widget' => (isWidget() ? 'widget' : 'app');
+const routeOf = (): 'app' | 'widget' | 'desktop' =>
+  isWidget() ? 'widget' : window.location.hash.startsWith('#desktop') || desktop()?.board ? 'desktop' : 'app';
 const route = ref(routeOf());
 const deskOpen = ref(window.location.hash === '#desk');
 const now = useNow();
@@ -296,6 +298,23 @@ function revealFromWidget(id: string) {
   if (bridge) bridge.openApp(`note:${id}`);
   else revealNote(id);
 }
+// ------------------------------------------------------- desktop board (#desktop)
+function openFromBoard() {
+  if (bridge?.board) bridge.openApp();
+  else window.location.hash = '';
+}
+function revealFromBoard(id: string) {
+  if (bridge?.board) bridge.openApp(`note:${id}`);
+  else revealNote(id);
+}
+function openBoardMode() {
+  fileOpen.value = false;
+  // the Windows / Mac app puts it behind your windows, as the desktop; a browser shows it here
+  if (bridge?.showBoard) {
+    bridge.showBoard();
+    say('The desktop board is on, behind your windows. Turn it off from the corkboard icon by the clock.');
+  } else window.location.hash = 'desktop';
+}
 function pickDeskBoard(id: string) {
   deskCfg.value = { ...deskCfg.value, boardId: id };
   saveDesk(deskCfg.value);
@@ -501,7 +520,16 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="route === 'widget'" class="app">
+  <div v-if="route === 'desktop'" class="app db-host">
+    <DesktopBoard :boards="store.boards" :desk="!!bridge?.board" @open="openFromBoard" @reveal="revealFromBoard" @hide="bridge?.setSettings({ board: false })" />
+    <div v-if="ringing" class="ring" role="alert">
+      <span class="ring-ico" aria-hidden="true">⏰</span>
+      <span class="ring-txt"><b>{{ ringing.title.replace('⏰ ', '') }}</b><small>{{ ringing.body }}</small></span>
+      <button @click="revealFromBoard(ringing.noteId)">Show</button>
+      <button class="ghosty" @click="ringing = null">OK</button>
+    </div>
+  </div>
+  <div v-else-if="route === 'widget'" class="app">
     <WidgetView
       :config="deskCfg"
       :boards="store.boards"
@@ -584,6 +612,10 @@ onBeforeUnmount(() => {
           <button class="menu-item" role="menuitem" data-action="desk" @click="openDesk">
             <span class="mi-ico" aria-hidden="true">📌</span>
             <span class="mi-title">Desktop widget<small>your date, reminders and a board on the desktop</small></span>
+          </button>
+          <button class="menu-item" role="menuitem" data-action="desktop-board" @click="openBoardMode">
+            <span class="mi-ico" aria-hidden="true">🟨</span>
+            <span class="mi-title">Desktop board<small>to-dos, notes, calendar, focus timer and journal behind your windows</small></span>
           </button>
           <button class="menu-item" role="menuitem" data-action="widget" @click="openWidget">
             <span class="mi-ico" aria-hidden="true">🗓️</span>

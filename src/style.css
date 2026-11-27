@@ -23,6 +23,7 @@ body {
 button { font: inherit; cursor: pointer; }
 
 .app { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+.app.db-host { display: block; overflow: auto; }
 
 .bar {
   display: flex;

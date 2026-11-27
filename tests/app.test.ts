@@ -115,7 +115,7 @@ describe('top bar', () => {
     const names = wrapper.findAll('.file-menu .menu-item .mi-title').map((t) => t.element.firstChild?.textContent?.trim());
     expect(names).toEqual([
       'New board', 'Import files', 'Word', 'PDF', 'Text', 'Markdown', 'Backup',
-      'Desktop widget', 'Widget mode', 'Install app',
+      'Desktop widget', 'Desktop board', 'Widget mode', 'Install app',
     ]);
     expect(wrapper.find('input[type=file][multiple]').attributes('accept')).toContain('.docx');
     wrapper.unmount();
@@ -578,5 +578,122 @@ describe('panning', () => {
     expect(store.active?.id).toBe(board.id);
     wrapper.unmount();
     proto.setPointerCapture = had;
+  });
+});
+
+describe('desktop board', () => {
+  function mountBoard() {
+    localStorage.clear();
+    window.location.hash = '#desktop';
+    const store = useWorkspace();
+    store.replace({ version: 2, boards: [], camera: null });
+    const b = store.addBoard('landscape');
+    const n = store.addNote('sticky', { boardId: b.id, text: 'Demo day' })!;
+    const d = new Date();
+    const p = (x: number) => String(x).padStart(2, '0');
+    const today = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    store.setDue(n.id, `${today}T23:59`, null);
+    return { store, n, today, wrapper: mount(App, { attachTo: document.body }) };
+  }
+  const saved = () => JSON.parse(localStorage.getItem('corkboard:desktop-board')!);
+
+  it('#desktop: every card, the welcome to-dos and notes, no top bar', () => {
+    const { wrapper } = mountBoard();
+    expect(wrapper.find('.bar').exists()).toBe(false);
+    for (const id of ['clock', 'todo', 'calendar', 'timer', 'progress', 'journal']) expect(wrapper.find(`[data-widget=${id}]`).exists()).toBe(true);
+    expect(wrapper.findAll('.todos li')).toHaveLength(3);
+    expect(wrapper.findAll('.note')).toHaveLength(2);
+    expect(wrapper.find('[data-clock]').text()).toMatch(/\d{1,2}[:.]\d{2}/);
+    window.location.hash = '';
+    wrapper.unmount();
+  });
+
+  it('to-dos: add, tick (counted), remove; saved on the device', async () => {
+    const { wrapper } = mountBoard();
+    await wrapper.find('[data-field=todo-new]').setValue('Write chapter 2');
+    await wrapper.find('.todo-add').trigger('submit');
+    expect(wrapper.findAll('.todos li')).toHaveLength(4);
+    expect(saved().todos.at(-1).text).toBe('Write chapter 2');
+    await wrapper.findAll('[data-todo-tick]')[3].setValue(true);
+    expect(wrapper.find('[data-todo-count]').text()).toBe('1/4 done');
+    expect(wrapper.find('[data-stat=tasks]').text()).toBe('1');
+    await wrapper.findAll('[data-todo-remove]')[0].trigger('click');
+    expect(wrapper.findAll('.todos li')).toHaveLength(3);
+    window.location.hash = '';
+    wrapper.unmount();
+  });
+
+  it('sticky notes: add, write, recolour, remove with undo', async () => {
+    const { wrapper } = mountBoard();
+    await wrapper.find('[data-action=db-sticky]').trigger('click');
+    expect(wrapper.findAll('.note')).toHaveLength(3);
+    const last = wrapper.findAll('.note').at(-1)!;
+    await last.find('textarea').setValue('call the bank');
+    expect(saved().stickies.at(-1).text).toBe('call the bank');
+    const before = saved().stickies.at(-1).color;
+    await last.find('[data-action=sticky-color]').trigger('click');
+    expect(saved().stickies.at(-1).color).not.toBe(before);
+    await wrapper.findAll('.note').at(-1)!.find('[data-action=sticky-remove]').trigger('click');
+    expect(wrapper.findAll('.note')).toHaveLength(2);
+    await wrapper.find('[data-action=sticky-undo]').trigger('click');
+    expect(wrapper.findAll('.note').at(-1)!.find('textarea').element.value).toBe('call the bank');
+    window.location.hash = '';
+    wrapper.unmount();
+  });
+
+  it("calendar: today's agenda from the boards, tick it off", async () => {
+    const { store, n, wrapper } = mountBoard();
+    expect(wrapper.find('.day.today').exists()).toBe(true);
+    expect(wrapper.find('.day.today').classes()).toContain('busy');
+    expect(wrapper.find('.agenda').text()).toContain('Demo day');
+    await wrapper.find('[data-agenda-tick]').trigger('click');
+    expect(store.find(n.id)!.note.done).toBe(true);
+    await wrapper.find('[data-action=cal-next]').trigger('click');
+    expect(wrapper.find('.day.today').exists()).toBe(false);
+    await wrapper.find('[data-action=cal-today]').trigger('click');
+    expect(wrapper.find('.day.today').exists()).toBe(true);
+    window.location.hash = '';
+    wrapper.unmount();
+  });
+
+  it('focus timer: modes, length, start and pause', async () => {
+    const { wrapper } = mountBoard();
+    expect(wrapper.find('[data-timer]').text()).toBe('25:00');
+    await wrapper.find('[data-mode=long]').trigger('click');
+    expect(wrapper.find('[data-timer]').text()).toBe('15:00');
+    await wrapper.find('[data-action=len-up]').trigger('click');
+    expect(wrapper.find('[data-timer]').text()).toBe('20:00');
+    await wrapper.find('[data-mode=focus]').trigger('click');
+    await wrapper.find('[data-action=timer-toggle]').trigger('click');
+    expect(saved().timer.endsAt).toBeGreaterThan(Date.now());
+    expect(wrapper.find('[data-action=timer-toggle]').text()).toBe('Pause');
+    await wrapper.find('[data-action=timer-toggle]').trigger('click');
+    expect(saved().timer.endsAt).toBeNull();
+    expect(wrapper.find('[data-action=timer-toggle]').text()).toBe('Resume');
+    window.location.hash = '';
+    wrapper.unmount();
+  });
+
+  it('journal: mood and words for today, then under past days', async () => {
+    const { today, wrapper } = mountBoard();
+    await wrapper.find('[data-mood="3"]').trigger('click');
+    await wrapper.find('[data-field=journal]').setValue('Good day at the library');
+    expect(saved().journal[today]).toEqual({ text: 'Good day at the library', mood: 3 });
+    await wrapper.find('[data-action=journal-past]').trigger('click');
+    expect(wrapper.find('.c-journal .empty').exists()).toBe(true); // today isn't a past day
+    window.location.hash = '';
+    wrapper.unmount();
+  });
+
+  it('hide a card and put everything back', async () => {
+    const { wrapper } = mountBoard();
+    await wrapper.find('[data-action=db-widgets]').trigger('click');
+    await wrapper.find('[data-widget-toggle=journal]').setValue(false);
+    expect(wrapper.find('[data-widget=journal]').exists()).toBe(false);
+    await wrapper.find('[data-action=db-reset]').trigger('click');
+    expect(wrapper.find('[data-widget=journal]').exists()).toBe(true);
+    await wrapper.find('[data-action=db-open]').trigger('click');
+    expect(window.location.hash).toBe('');
+    wrapper.unmount();
   });
 });
