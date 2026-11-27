@@ -74,7 +74,7 @@
       "gatekeeperAssess": false,
       "artifactName": "corkboard-mac.${ext}",
       "files": [
-        "!node_modules/koffi/build/koffi/!(darwin_x64|darwin_arm64)/**"
+        "!node_modules/koffi/**"
       ]
     },
     "dmg": {
